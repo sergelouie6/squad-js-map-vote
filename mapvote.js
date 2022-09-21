@@ -65,6 +65,16 @@ export default class MapVote extends DiscordBasePlugin {
                 description: 'random layer list will be generated with only selected gamemodes',
                 default: [ "AAS", "RAAS", "INVASION" ]
             },
+            layerFilteringMode: {
+                required: false,
+                description: "Select Whitelist mode or Blacklist mode",
+                default: "blacklist"
+            },
+            layerLevelWhitelist: {
+                required: false,
+                description: 'random layer list will not include the blacklisted layers or levels. (acceptable formats: Gorodok/Gorodok_RAAS/Gorodok_AAS_v1)',
+                default: []
+            },
             layerLevelBlacklist: {
                 required: false,
                 description: 'random layer list will not include the blacklisted layers or levels. (acceptable formats: Gorodok/Gorodok_RAAS/Gorodok_AAS_v1)',
@@ -189,7 +199,7 @@ export default class MapVote extends DiscordBasePlugin {
         const utcDelay = parseFloat(this.options.timezone);
         const timeNow = new Date(0, 0, 0, new Date().getUTCHours() + utcDelay, new Date().getUTCMinutes());
         this.verbose(1, `Current time (UTC+${utcDelay}) ${timeNow.toLocaleTimeString().split(':').splice(0, 2).join(':')}`)
-        
+
         const activeTimeframes = orOpt.timeFrames.filter(tfFilter);
         let logTimeframe = "Active Time Frames: ";
         let activeTfIds = [];
@@ -214,90 +224,6 @@ export default class MapVote extends DiscordBasePlugin {
             return (tfStart <= timeNow && timeNow < tfEnd) || (tfStart > tfEnd && ((tfStart <= timeNow && timeNow < tfEnd2) || (tfStart2 <= timeNow && timeNow < tfEnd)))
         }
     }
-    async checkUpdates(callback) {
-        const versionN = "1.0.0"
-        let releasesUrl = "https://api.github.com/repos/fantinodavide/squad-js-map-vote/releases";
-        let curDate = new Date();
-        console.log("Current version: ", versionN, "\n > Checking for updates", curDate.toLocaleString());
-        axios
-            .get(releasesUrl)
-            .then(res => {
-                const gitResData = res.data[ 0 ];
-                const checkV = gitResData.tag_name.toUpperCase().replace("V", "").split(".");
-                const versionSplit = versionN.toString().split(".");
-
-                const config_authorized_update = true;//((config.other.install_beta_versions && gitResData.prerelease) || !gitResData.prerelease);
-                const major_version_update = (parseInt(versionSplit[ 0 ]) < parseInt(checkV[ 0 ]));
-                const minor_version_update = (parseInt(versionSplit[ 0 ]) <= parseInt(checkV[ 0 ]) && parseInt(versionSplit[ 1 ]) < parseInt(checkV[ 1 ]));
-                const patch_version_update = (parseInt(versionSplit[ 0 ]) <= parseInt(checkV[ 0 ]) && parseInt(versionSplit[ 1 ]) <= parseInt(checkV[ 1 ]) && parseInt(versionSplit[ 2 ]) < parseInt(checkV[ 2 ]));
-
-                if (config_authorized_update && (major_version_update || minor_version_update || patch_version_update)) {
-                    console.log(" > Update found: " + gitResData.tag_name, gitResData.name);
-                    //if (updateFoundCallback) updateFoundCallback();
-                    // server.close();
-                    if (downloadInstallUpdate) downloadLatestUpdate(gitResData);
-                    else if (callback) callback();
-                } else {
-                    console.log(" > No updates found");
-                    if (callback) callback();
-                }
-            })
-            .catch(err => {
-                console.error(" > Couldn't check for updates. Proceding startup", err);
-                if (callback) callback();
-            })
-    }
-    downloadLatestUpdate(gitResData) {
-        // const url = gitResData.zipball_url;
-        const url = gitResData.zipball_url;
-        console.log(" > Downloading update: " + gitResData.tag_name, gitResData.name, url);
-        const dwnDir = path.resolve(__dirname, 'tmp_update');//, 'gitupd.zip')
-        const dwnFullPath = path.resolve(dwnDir, 'gitupd.zip')
-
-        if (!fs.existsSync(dwnDir)) fs.mkdirSync(dwnDir);
-
-        const writer = fs.createWriteStream(dwnFullPath)
-        axios({
-            method: "get",
-            url: url,
-            responseType: "stream"
-        }).then((response) => {
-            response.data.pipe(writer);
-        });
-
-        writer.on('finish', (res) => {
-            setTimeout(() => {
-                installLatestUpdate(dwnDir, dwnFullPath, gitResData);
-            }, 1000)
-        })
-        writer.on('error', (err) => {
-            console.error(err);
-        })
-    }
-    installLatestUpdate(dwnDir, dwnFullPath, gitResData) {
-        const zip = new StreamZip({
-            file: dwnFullPath,
-            storeEntries: true,
-            skipEntryNameValidation: true
-        });
-        zip.on('ready', () => {
-            fs.remove(__dirname + "/dist", () => {
-                zip.extract("release/", __dirname, (err, res) => {
-                    zip.close();
-                    nrc.run('npm install');
-                    console.log(" > Extracted", res, "files");
-                    fs.remove(dwnDir, () => {
-                        console.log(`${dwnDir} folder deleted`);
-                        const restartTimeout = 5000;
-                        console.log(" > Restart in", restartTimeout / 1000, "seconds");
-                        restartProcess(restartTimeout);
-                    })
-                });
-            })
-
-        });
-    }
-
     setSeedingMode(isNewGameEvent = false) {
         // setTimeout(()=>{this.msgDirect('76561198419229279',"MV\ntest\ntest")},1000)
         // this.msgBroadcast("[MapVote] Seeding mode active")
@@ -435,6 +361,7 @@ export default class MapVote extends DiscordBasePlugin {
                         if (this.currentWinners.find(e => e == this.nominations[ 0 ]) && this.currentWinners.length == 1) {
                             this.newVoteTimeout = null;
                             this.endVoting()
+                            this.broadcast("The previous Map Vote has been canceled and a new one has been generated!")
                             this.beginVoting(true, this.newVoteOptions.steamid, this.newVoteOptions.cmdLayers)
                         }
                     }, 2 * 60 * 1000)
@@ -498,13 +425,21 @@ export default class MapVote extends DiscordBasePlugin {
         this.factionStrings = [];
         let rnd_layers = [];
         // let rnd_layers = [];
-        const sanitizedLayers = Layers.layers.filter((l) => l.layerid);
+        const sanitizedLayers = Layers.layers.filter((l) => l.layerid && l.map);
+        const maxOptions = this.options.showRerollOption ? 5 : 6;
         if (!cmdLayers || cmdLayers.length == 0) {
-
             const recentlyPlayedMaps = this.objArrToValArr(this.server.layerHistory.splice(0, this.options.numberRecentMapsToExlude), "layer", "map", "name");
             this.verbose(1, "Recently played maps: " + recentlyPlayedMaps.join(', '))
-            const all_layers = sanitizedLayers.filter((l) => l.layerid && l.map && this.options.gamemodeWhitelist.includes(l.gamemode.toUpperCase()) && (![ this.server.currentLayer ? this.server.currentLayer.map.name : null, ...recentlyPlayedMaps ].includes(l.map.name)) && !this.options.layerLevelBlacklist.find((fl) => l.layerid.toLowerCase().startsWith(fl.toLowerCase())));
-            for (let i = 1; i <= 6; i++) {
+
+            const all_layers = sanitizedLayers.filter((l) =>
+                this.options.gamemodeWhitelist.includes(l.gamemode.toUpperCase()) &&
+                ![ this.server.currentLayer ? this.server.currentLayer.map.name : null, ...recentlyPlayedMaps ].includes(l.map.name) &&
+                (
+                    (this.options.layerFilteringMode.toLowerCase() == "blacklist" && !this.options.layerLevelBlacklist.find((fl) => l.layerid.toLowerCase().startsWith(fl.toLowerCase()))) ||
+                    (this.options.layerFilteringMode.toLowerCase() == "whitelist" && this.options.layerLevelWhitelist.find((fl) => l.layerid.toLowerCase().startsWith(fl.toLowerCase())))
+                )
+            );
+            for (let i = 1; i <= maxOptions; i++) {
                 let l, maxtries = 10;
                 do l = randomElement(all_layers); while (rnd_layers.find(lf => lf.layerid == l.layerid) && --maxtries == 0)
                 if (maxtries > 0) {
@@ -514,9 +449,8 @@ export default class MapVote extends DiscordBasePlugin {
                     this.factionStrings[ i ] = getTranslation(l.teams[ 0 ]) + "-" + getTranslation(l.teams[ 1 ]);
                 }
             }
-            if (!bypassRaasFilter && rnd_layers.filter((l) => l.gamemode === 'RAAS' && this.options.gamemodeWhitelist.includes("RAAS")).length < 3) this.populateNominations();
+            if (!bypassRaasFilter && this.options.gamemodeWhitelist.includes("RAAS") && rnd_layers.filter((l) => l.gamemode === 'RAAS').length < Math.floor(maxOptions / 2)) this.populateNominations();
         } else {
-            const maxOptions = this.options.showRerollOption ? 5 : 6;
             let singleGamemodeVote = false;
             if (cmdLayers.length == 1 && cmdLayers[ 0 ].split('_')[ 0 ] == "*") {
                 singleGamemodeVote = true;

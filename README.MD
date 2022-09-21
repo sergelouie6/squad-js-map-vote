@@ -158,6 +158,7 @@ Array of timeframes that allows to override options based on local time. See exa
     "automaticSeedingMode": true,
     "gamemodeWhitelist": [ "AAS", "RAAS", "Invasion" ],
     "layerLevelBlacklist": [ "BlackCoast_Seed" ],
+    "layerLevelWhitelist": [ "Yeho", "Gorodok", "Mutaha", "Narva", "Tallil" ],
     "hideVotesCount": false,
     "showRerollOption": false,
     "voteBroadcastMessage": "✯ MAPVOTE ✯ Vote for the next map by writing in chat the corresponding number!",

@@ -72,7 +72,7 @@ export default class MapVote extends DiscordBasePlugin {
             },
             layerLevelWhitelist: {
                 required: false,
-                description: 'random layer list will not include the blacklisted layers or levels. (acceptable formats: Gorodok/Gorodok_RAAS/Gorodok_AAS_v1)',
+                description: 'random layer list will include only the whitelisted layers or levels. (acceptable formats: Gorodok/Gorodok_RAAS/Gorodok_AAS_v1)',
                 default: []
             },
             layerLevelBlacklist: {

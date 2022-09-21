@@ -76,9 +76,23 @@ The random layer list will be generated with only selected gamemodes.
 ```json
 [ "AAS", "RAAS", "INVASION" ]
 ```
+#### layerFilteringMode
+###### Description
+Select Whitelist mode or Blacklist mode.
+###### Default
+```json
+"blacklist"
+```
+#### layerLevelWhitelist
+###### Description
+The random layer list will include ONLY the whitelisted layers or levels. (acceptable formats: Gorodok/Gorodok_RAAS/Gorodok_AAS_v1).
+###### Default
+```
+[]
+```
 #### layerLevelBlacklist
 ###### Description
-The random layer list will not include the blacklisted layers or levels. (acceptable formats: Gorodok/Gorodok_RAAS/Gorodok_AAS_v1).
+The random layer list will NOT include the blacklisted layers or levels. (acceptable formats: Gorodok/Gorodok_RAAS/Gorodok_AAS_v1).
 ###### Default
 ```
 []

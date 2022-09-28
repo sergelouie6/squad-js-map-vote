@@ -139,6 +139,7 @@ export default class MapVote extends DiscordBasePlugin {
             bypassRaasFilter: false
         };
         this.or_options = { ...this.options };
+        this.autovotestart = null;
 
         this.onNewGame = this.onNewGame.bind(this);
         this.onPlayerDisconnected = this.onPlayerDisconnected.bind(this);
@@ -183,7 +184,7 @@ export default class MapVote extends DiscordBasePlugin {
             this.tallies = [];
             this.nominations = [];
             this.factionStrings = [];
-            if (this.options.automaticVoteStart) setTimeout(this.beginVoting, toMils(this.options.voteWaitTimeFromMatchStart));
+            if (this.options.automaticVoteStart) this.autovotestart = setTimeout(this.beginVoting, toMils(this.options.voteWaitTimeFromMatchStart));
             setTimeout(() => this.setSeedingMode(true), 10000);
         }, 10000)
     }
@@ -321,6 +322,17 @@ export default class MapVote extends DiscordBasePlugin {
                     return;
                 }
                 this.endVoting();
+                await this.warn(steamID, "Ending current vote");
+                return;
+            case "cancelauto": //cancels the current vote and wont set next map to current winnner
+                if (!isAdmin) return;
+
+                if (!this.autovotestart) {
+                    await this.warn(steamID, "There is no automatic vote start scheduled");
+                    return;
+                }
+                clearTimeout(this.autovotestart);
+                this.autovotestart = null;
                 await this.warn(steamID, "Ending current vote");
                 return;
             case "broadcast":

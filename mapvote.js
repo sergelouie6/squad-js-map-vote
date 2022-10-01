@@ -140,6 +140,7 @@ export default class MapVote extends DiscordBasePlugin {
         };
         this.or_options = { ...this.options };
         this.autovotestart = null;
+        this.lastMapUpdate = new Date();
 
         this.onNewGame = this.onNewGame.bind(this);
         this.onPlayerDisconnected = this.onPlayerDisconnected.bind(this);
@@ -193,7 +194,7 @@ export default class MapVote extends DiscordBasePlugin {
         if (!this.votingEnabled) return;
         await this.server.updatePlayerList();
         this.clearVote();
-        this.updateNextMap();
+        if (new Date() - this.lastMapUpdate > 5 * 1000) this.updateNextMap();
     }
     async timeframeOptionOverrider() {
         const orOpt = { ...this.or_options };
@@ -359,6 +360,7 @@ export default class MapVote extends DiscordBasePlugin {
 
     updateNextMap() //sets next map to current mapvote winner, if there is a tie will pick at random
     {
+        this.lastMapUpdate = new Date();
         let cpyWinners = this.currentWinners;
         let skipSetNextMap = false;
         if (cpyWinners.find(e => e == this.nominations[ 0 ])) {

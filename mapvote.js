@@ -385,7 +385,9 @@ export default class MapVote extends DiscordBasePlugin {
         }
         if (!skipSetNextMap) {
             const nextMap = randomElement(cpyWinners);
-            this.server.rcon.execute(`AdminSetNextLayer ${nextMap}`);
+            const baseDataExist = this && this.options && this.server && this.server.players && this.server.nextLayer && this.server.nextLayer.layerid;
+            if (!baseDataExist || this.server.nextLayer.layerid != nextMap)
+                this.server.rcon.execute(`AdminSetNextLayer ${nextMap}`);
         }
     }
 

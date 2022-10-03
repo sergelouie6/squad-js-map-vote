@@ -205,10 +205,10 @@ export default class MapVote extends DiscordBasePlugin {
         const orOpt = { ...this.or_options };
         const utcDelay = parseFloat(this.options.timezone);
         let timeNow = new Date(0, 0, 0, new Date().getUTCHours() + utcDelay, new Date().getUTCMinutes());
-        timeNow = new Date(0,0,0,timeNow.getHours(),timeNow.getMinutes())
+        timeNow = new Date(0, 0, 0, timeNow.getHours(), timeNow.getMinutes())
 
         // console.log(timeNow, timeNow.toTimeString(), timeNow.toLocaleTimeString())
-        this.verbose(1, `Current time (UTC+${utcDelay}) ${timeNow.toLocaleTimeString('en-GB').split(':').splice(0, 2).join(':')}`)
+        this.verbose(1, `Current time (UTC${(utcDelay >= 0 ? '+' : '') + utcDelay}) ${timeNow.toLocaleTimeString('en-GB').split(':').splice(0, 2).join(':')} `)
 
         const activeTimeframes = orOpt.timeFrames.filter(tfFilter);
         let logTimeframe = "Active Time Frames: ";
@@ -253,7 +253,7 @@ export default class MapVote extends DiscordBasePlugin {
                             if (this.server.players.length <= 5) {
                                 const newCurrentMap = rndMap.layerid;
                                 this.verbose(1, 'Going into seeding mode.');
-                                this.server.rcon.execute(`AdminChangeLayer ${newCurrentMap}`);
+                                this.server.rcon.execute(`AdminChangeLayer ${newCurrentMap} `);
                             }
                         }
                     } else this.verbose(1, "Bad data (currentLayer). Seeding mode for current layer skipped to prevent errors.");
@@ -266,7 +266,7 @@ export default class MapVote extends DiscordBasePlugin {
 
                         if (isNewGameEvent && this.server.players.length < 20 && this.server.nextLayer.gamemode.toLowerCase() != "seed") {
                             const newNextMap = rndMap2.layerid;
-                            this.server.rcon.execute(`AdminSetNextLayer ${newNextMap}`);
+                            this.server.rcon.execute(`AdminSetNextLayer ${newNextMap} `);
                         }
                     } else this.verbose(1, "Bad data (nextLayer). Seeding mode for next layer skipped to prevent errors.");
 

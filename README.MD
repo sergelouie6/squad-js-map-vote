@@ -121,7 +121,7 @@ Message that is sent as broadcast to announce a vote.
 ```
 #### allowedSameMapEntries
 ###### Description
-Allowed NUMBER of duplicate map entries in vote list.
+Allowed max NUMBER of times a map could appear in the vote list.
 ###### Default
 ```json
 1

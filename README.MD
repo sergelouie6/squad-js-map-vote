@@ -119,7 +119,7 @@ Message that is sent as broadcast to announce a vote.
 ```json
 "✯ MAPVOTE ✯ Vote for the next map by writing in chat the corresponding number!"
 ```
-#### allowedMapDuplicates
+#### allowedSameMapEntries
 ###### Description
 Allowed NUMBER of duplicate map entries in vote list.
 ###### Default
@@ -184,7 +184,7 @@ Array of timeframes that allows to override options based on local time. See exa
     "hideVotesCount": false,
     "showRerollOption": false,
     "voteBroadcastMessage": "✯ MAPVOTE ✯ Vote for the next map by writing in chat the corresponding number!",
-    "allowedMapDuplicates": 1,
+    "allowedSameMapEntries": 1,
     "logToDiscord": true,
     "channelID": "112233445566778899",
     "timezone": 2,

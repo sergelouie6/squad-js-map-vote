@@ -95,7 +95,7 @@ export default class MapVote extends DiscordBasePlugin {
                 description: 'Message that is sent as broadcast to announce a vote',
                 default: "✯ MAPVOTE ✯\nVote for the next map by writing in chat the corresponding number!"
             },
-            allowedMapDuplicates: {
+            allowedSameMapEntries: {
                 required: false,
                 description: 'Allowed NUMBER of duplicate map entries in vote list',
                 default: 1
@@ -468,7 +468,7 @@ export default class MapVote extends DiscordBasePlugin {
             );
             for (let i = 1; i <= maxOptions; i++) {
                 let l, maxtries = 10;
-                do l = randomElement(all_layers); while ((rnd_layers.find(lf => lf.layerid == l.layerid) || rnd_layers.filter(lf => lf.map.name == l.map.name).length > (this.options.allowedMapDuplicates-1)) && --maxtries >= 0)
+                do l = randomElement(all_layers); while ((rnd_layers.find(lf => lf.layerid == l.layerid) || rnd_layers.filter(lf => lf.map.name == l.map.name).length > (this.options.allowedSameMapEntries-1)) && --maxtries >= 0)
                 if (maxtries > 0) {
                     rnd_layers.push(l);
                     this.nominations[ i ] = l.layerid
@@ -493,7 +493,7 @@ export default class MapVote extends DiscordBasePlugin {
                     const cls = cl.split('_');
                     const fLayers = sanitizedLayers.filter((l) => ((cls[ 0 ] == "*" || l.layerid.toLowerCase().startsWith(cls[ 0 ])) && (l.gamemode.toLowerCase().startsWith(cls[ 1 ]) || (!cls[ 1 ] && [ 'RAAS', 'AAS', 'INVASION' ].includes(l.gamemode.toUpperCase()))) && (!cls[ 2 ] || l.version.toLowerCase().startsWith("v" + cls[ 2 ].replace(/v/gi, '')))));
                     let l, maxtries = 10;
-                    do l = randomElement(fLayers); while ((rnd_layers.filter(lf => lf.map.name == l.map.name).length > (this.options.allowedMapDuplicates-1)) && --maxtries >= 0)
+                    do l = randomElement(fLayers); while ((rnd_layers.filter(lf => lf.map.name == l.map.name).length > (this.options.allowedSameMapEntries-1)) && --maxtries >= 0)
                     if (l) {
                         rnd_layers.push(l);
                         this.nominations[ i ] = l.layerid

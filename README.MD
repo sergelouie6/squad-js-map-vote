@@ -184,6 +184,7 @@ Array of timeframes that allows to override options based on local time. See exa
     "hideVotesCount": false,
     "showRerollOption": false,
     "voteBroadcastMessage": "✯ MAPVOTE ✯ Vote for the next map by writing in chat the corresponding number!",
+    "allowedMapDuplicates": 1,
     "logToDiscord": true,
     "channelID": "112233445566778899",
     "timezone": 2,

@@ -534,16 +534,12 @@ export default class MapVote extends DiscordBasePlugin {
 
         if (playerCount < minPlayers && !force) {
             if (this.onConnectBound == false) {
-                this.server.on("PLAYER_CONNECTED", this.beginVoting)
+                setTimeout(() => { this.beginVoting(force, null, cmdLayers) }, 60 * 1000)
                 this.onConnectBound = true;
             }
             return;
         }
-        if (this.onConnectBound) {
-
-            this.server.removeEventListener("PLAYER_CONNECTED", this.beginVoting);
-            this.onConnectBound = false;
-        }
+        this.onConnectBound = false;
 
         // these need to be reset after reenabling voting
         this.trackedVotes = {};

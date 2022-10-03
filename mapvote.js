@@ -95,6 +95,11 @@ export default class MapVote extends DiscordBasePlugin {
                 description: 'Message that is sent as broadcast to announce a vote',
                 default: "✯ MAPVOTE ✯\nVote for the next map by writing in chat the corresponding number!"
             },
+            allowedMapDuplicates: {
+                required: false,
+                description: 'Allowed NUMBER of duplicate map entries in vote list',
+                default: 1
+            },
             logToDiscord: {
                 required: false,
                 description: 'Enables/disables vote logging to Discord',
@@ -199,8 +204,11 @@ export default class MapVote extends DiscordBasePlugin {
     async timeframeOptionOverrider() {
         const orOpt = { ...this.or_options };
         const utcDelay = parseFloat(this.options.timezone);
-        const timeNow = new Date(0, 0, 0, new Date().getUTCHours() + utcDelay, new Date().getUTCMinutes());
-        this.verbose(1, `Current time (UTC+${utcDelay}) ${timeNow.toLocaleTimeString().split(':').splice(0, 2).join(':')}`)
+        let timeNow = new Date(0, 0, 0, new Date().getUTCHours() + utcDelay, new Date().getUTCMinutes());
+        timeNow = new Date(0,0,0,timeNow.getHours(),timeNow.getMinutes())
+
+        // console.log(timeNow, timeNow.toTimeString(), timeNow.toLocaleTimeString())
+        this.verbose(1, `Current time (UTC+${utcDelay}) ${timeNow.toLocaleTimeString('en-GB').split(':').splice(0, 2).join(':')}`)
 
         const activeTimeframes = orOpt.timeFrames.filter(tfFilter);
         let logTimeframe = "Active Time Frames: ";
@@ -223,6 +231,9 @@ export default class MapVote extends DiscordBasePlugin {
             const tfStart2 = new Date(0, 0, 0, 0, 0)
             const tfEnd = new Date(0, 0, 0, ...tfEndSplit)
             const tfEnd2 = new Date(0, 0, 0, 24, 0)
+
+            // console.log(timeNow, tfStart, tfEnd, tfStart2 <= timeNow, timeNow < tfEnd)
+
             return (tfStart <= timeNow && timeNow < tfEnd) || (tfStart > tfEnd && ((tfStart <= timeNow && timeNow < tfEnd2) || (tfStart2 <= timeNow && timeNow < tfEnd)))
         }
     }
@@ -457,7 +468,7 @@ export default class MapVote extends DiscordBasePlugin {
             );
             for (let i = 1; i <= maxOptions; i++) {
                 let l, maxtries = 10;
-                do l = randomElement(all_layers); while (rnd_layers.find(lf => lf.layerid == l.layerid) && --maxtries == 0)
+                do l = randomElement(all_layers); while ((rnd_layers.find(lf => lf.layerid == l.layerid) || rnd_layers.filter(lf => lf.map.name == l.map.name).length > this.options.allowedMapDuplicates) && --maxtries >= 0)
                 if (maxtries > 0) {
                     rnd_layers.push(l);
                     this.nominations[ i ] = l.layerid
@@ -466,6 +477,10 @@ export default class MapVote extends DiscordBasePlugin {
                 }
             }
             if (!bypassRaasFilter && this.options.gamemodeWhitelist.includes("RAAS") && rnd_layers.filter((l) => l.gamemode === 'RAAS').length < Math.floor(maxOptions / 2)) this.populateNominations();
+            if (this.nominations.length == 0) {
+                this.populateNominations(steamid, cmdLayers, bypassRaasFilter);
+                return;
+            }
         } else {
             let singleGamemodeVote = false;
             if (cmdLayers.length == 1 && cmdLayers[ 0 ].split('_')[ 0 ] == "*") {

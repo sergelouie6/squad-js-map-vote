@@ -119,6 +119,13 @@ Message that is sent as broadcast to announce a vote.
 ```json
 "✯ MAPVOTE ✯ Vote for the next map by writing in chat the corresponding number!"
 ```
+#### allowedMapDuplicates
+###### Description
+Allowed NUMBER of duplicate map entries in vote list.
+###### Default
+```json
+1
+```
 #### logToDiscord
 ###### Description
 Enables/disables vote logging to Discord.

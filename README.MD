@@ -35,25 +35,39 @@ The command name to use in chat.
 ```
 !vote
 ```
+#### automaticVoteStart
+###### Description
+A map vote will automatically start after a new match if set to true.
+###### Default
+```json
+true
+```
+#### votingDuration
+###### Description
+How long the voting will be active (in minutes). Set to 0 for unlimited time.
+###### Default
+```json
+0
+```
 #### minPlayersForVote
 ###### Description
 The number of players needed on the server for a vote to start.
 ###### Default
-```
+```json
 40
 ```
 #### voteWaitTimeFromMatchStart
 ###### Description
 The time in mins from the start of a round to the start of a new map vote.
 ###### Default
-```
+```json
 15
 ```
 #### voteBroadcastInterval
 ###### Description
 The broadcast interval for vote notification in mins.
 ###### Default
-```
+```json
 7
 ```
 #### automaticSeedingMode
@@ -67,7 +81,7 @@ true
 ###### Description
 The random layer list will not include the X recent maps
 ###### Default
-```
+```json
 4
 ```
 #### gamemodeWhitelist
@@ -180,6 +194,7 @@ Array of timeframes that allows to override options based on local time. See exa
     "enabled": true,
     "discordClient": "discord",
     "automaticVoteStart": true,
+    "votingDuration": 0,
     "minPlayersForVote": 30,
     "voteWaitTimeFromMatchStart": 10,
     "voteBroadcastInterval": 7,
@@ -188,6 +203,7 @@ Array of timeframes that allows to override options based on local time. See exa
     "gamemodeWhitelist": [ "AAS", "RAAS", "Invasion" ],
     "layerLevelBlacklist": [ "BlackCoast_Seed" ],
     "layerLevelWhitelist": [ "Yeho", "Gorodok", "Mutaha", "Narva", "Tallil" ],
+    "applyBlacklistToWhitelist": true,
     "hideVotesCount": false,
     "showRerollOption": false,
     "voteBroadcastMessage": "✯ MAPVOTE ✯ Vote for the next map by writing in chat the corresponding number!",

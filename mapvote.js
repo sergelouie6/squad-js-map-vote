@@ -31,6 +31,11 @@ export default class MapVote extends DiscordBasePlugin {
                 description: "a map vote will automatically start after a new match if set to true",
                 default: true
             },
+            votingDuration: {
+                required: false,
+                description: "How long the voting will be active (in minutes). Set to 0 for unlimited time.",
+                default: 0
+            },
             minPlayersForVote:
             {
                 required: false,
@@ -559,13 +564,11 @@ export default class MapVote extends DiscordBasePlugin {
             return;
 
         if (playerCount < minPlayers && !force) {
-            if (this.onConnectBound == false) {
-                setTimeout(() => { this.beginVoting(force, null, cmdLayers) }, 60 * 1000)
-                this.onConnectBound = true;
-            }
+            this.autovotestart = setTimeout(() => { this.beginVoting(force, steamid, cmdLayers) }, 60 * 1000)
             return;
         }
-        this.onConnectBound = false;
+
+        if (this.options.votingDuration > 0) setTimeout(this.endVoting, this.options.votingDuration * 60 * 1000)
 
         // these need to be reset after reenabling voting
         this.trackedVotes = {};

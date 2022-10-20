@@ -80,6 +80,11 @@ export default class MapVote extends DiscordBasePlugin {
                 description: 'random layer list will not include the blacklisted layers or levels. (acceptable formats: Gorodok/Gorodok_RAAS/Gorodok_AAS_v1)',
                 default: []
             },
+            applyBlacklistToWhitelist: {
+                required: false,
+                description: 'if set to true the blacklisted layers won\'t be included also in whitelist mode',
+                default: true
+            },
             hideVotesCount: {
                 required: false,
                 description: 'hides the number of votes a layer received in broadcast message',
@@ -465,7 +470,11 @@ export default class MapVote extends DiscordBasePlugin {
                 ![ this.server.currentLayer ? this.server.currentLayer.map.name : null, ...recentlyPlayedMaps ].includes(l.map.name) &&
                 (
                     (this.options.layerFilteringMode.toLowerCase() == "blacklist" && !this.options.layerLevelBlacklist.find((fl) => l.layerid.toLowerCase().startsWith(fl.toLowerCase()))) ||
-                    (this.options.layerFilteringMode.toLowerCase() == "whitelist" && this.options.layerLevelWhitelist.find((fl) => l.layerid.toLowerCase().startsWith(fl.toLowerCase())))
+                    (
+                        this.options.layerFilteringMode.toLowerCase() == "whitelist"
+                        && this.options.layerLevelWhitelist.find((fl) => l.layerid.toLowerCase().startsWith(fl.toLowerCase()))
+                        && !(this.options.applyBlacklistToWhitelist && this.options.layerLevelBlacklist.find((fl) => l.layerid.toLowerCase().startsWith(fl.toLowerCase())))
+                    )
                 )
             );
             for (let i = 1; i <= maxOptions; i++) {

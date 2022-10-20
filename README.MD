@@ -98,6 +98,13 @@ The random layer list will NOT include the blacklisted layers or levels. (accept
 ```
 []
 ```
+#### applyBlacklistToWhitelist
+###### Description
+If set to true the blacklisted layers will be filtered out also in whitelist mode.
+###### Default
+```json
+true
+```
 #### hideVotesCount
 ###### Description
 Hides the number of votes a layer received in broadcast message.

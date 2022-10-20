@@ -90,6 +90,11 @@ export default class MapVote extends DiscordBasePlugin {
                 description: 'if set to true the blacklisted layers won\'t be included also in whitelist mode',
                 default: true
             },
+            minRaasEntries: {
+                required: false,
+                description: 'Minimum amount of RAAS layers in the vote list.',
+                default: 2
+            },
             hideVotesCount: {
                 required: false,
                 description: 'hides the number of votes a layer received in broadcast message',
@@ -104,6 +109,11 @@ export default class MapVote extends DiscordBasePlugin {
                 required: false,
                 description: 'Message that is sent as broadcast to announce a vote',
                 default: "✯ MAPVOTE ✯\nVote for the next map by writing in chat the corresponding number!"
+            },
+            voteWinnerBroadcastMessage: {
+                required: false,
+                description: 'Message that is sent as broadcast to announce the winning layer',
+                default: "✯ MAPVOTE ✯\nThe winning layer is\n\n"
             },
             allowedSameMapEntries: {
                 required: false,
@@ -404,14 +414,15 @@ export default class MapVote extends DiscordBasePlugin {
                 }
             }
         }
+        const nextMap = randomElement(cpyWinners);
         if (!skipSetNextMap) {
-            const nextMap = randomElement(cpyWinners);
             const baseDataExist = this && this.server;
             const layerDataExist = this.server.nextLayer && this.server.nextLayer.layerid;
             if (baseDataExist && (!layerDataExist || this.server.nextLayer.layerid != nextMap))
                 this.server.rcon.execute(`AdminSetNextLayer ${nextMap}`);
             else console.log("[MapVote][1] Bad data (this/this.server). Next layer not set to prevent errors.");
         }
+        return nextMap;
     }
 
     matchLayers(builtString) {
@@ -483,8 +494,9 @@ export default class MapVote extends DiscordBasePlugin {
                 )
             );
             for (let i = 1; i <= maxOptions; i++) {
-                let l, maxtries = 10;
-                do l = randomElement(all_layers); while ((rnd_layers.find(lf => lf.layerid == l.layerid) || rnd_layers.filter(lf => lf.map.name == l.map.name).length > (this.options.allowedSameMapEntries - 1)) && --maxtries >= 0)
+                const needMoreRAAS = !bypassRaasFilter && rnd_layers.filter((l) => l.gamemode === 'RAAS').length < this.options.minRaasEntries;
+                let l, maxtries = 20;
+                do l = randomElement(needMoreRAAS ? all_layers.filter((l) => l.gamemode.toLowerCase() == "raas") : all_layers); while ((rnd_layers.find(lf => lf.layerid == l.layerid) || rnd_layers.filter(lf => lf.map.name == l.map.name).length > (this.options.allowedSameMapEntries - 1)) && --maxtries >= 0)
                 if (maxtries > 0) {
                     rnd_layers.push(l);
                     this.nominations[ i ] = l.layerid
@@ -492,7 +504,7 @@ export default class MapVote extends DiscordBasePlugin {
                     this.factionStrings[ i ] = getTranslation(l.teams[ 0 ]) + "-" + getTranslation(l.teams[ 1 ]);
                 }
             }
-            if (!bypassRaasFilter && this.options.gamemodeWhitelist.includes("RAAS") && rnd_layers.filter((l) => l.gamemode === 'RAAS').length < Math.floor(maxOptions / 2)) this.populateNominations();
+            // if (!bypassRaasFilter && this.options.gamemodeWhitelist.includes("RAAS") && rnd_layers.filter((l) => l.gamemode === 'RAAS').length < Math.floor(maxOptions / 2)) this.populateNominations();
             if (this.nominations.length == 0) {
                 this.populateNominations(steamid, cmdLayers, bypassRaasFilter);
                 return;
@@ -568,7 +580,10 @@ export default class MapVote extends DiscordBasePlugin {
             return;
         }
 
-        if (this.options.votingDuration > 0) setTimeout(this.endVoting, this.options.votingDuration * 60 * 1000)
+        if (this.options.votingDuration > 0) setTimeout(() => {
+            this.endVoting();
+            this.broadcast(this.options.voteWinnerBroadcastMessage + this.formatFancyLayer(Layers.layers.find((l)=>l.layerid == this.updateNextMap())));
+        }, this.options.votingDuration * 60 * 1000)
 
         // these need to be reset after reenabling voting
         this.trackedVotes = {};
@@ -622,6 +637,32 @@ export default class MapVote extends DiscordBasePlugin {
         }
         //const winners = this.currentWinners;
         //await this.msgBroadcast(`Current winner${winners.length > 1 ? "s" : ""}: ${winners.join(", ")}`);
+    }
+    formatFancyLayer(layer) {
+        const translations = {
+            'United States Army': "USA",
+            'United States Marine Corps': "USMC",
+            'Russian Ground Forces': "RUS",
+            'British Army': "GB",
+            'Canadian Army': "CAF",
+            'Australian Defence Force': "AUS",
+            'Irregular Militia Forces': "IRR",
+            'Middle Eastern Alliance': "MEA",
+            'Insurgent Forces': "INS",
+        }
+        const factionString = getTranslation(layer.teams[ 0 ]) + "-" + getTranslation(layer.teams[ 1 ]);
+
+        return layer.map.name + ' ' + layer.gamemode + ' ' + factionString
+
+        function getTranslation(t) {
+            if (translations[ t.faction ]) return translations[ t.faction ]
+            else {
+                const f = t.faction.split(' ');
+                let fTag = "";
+                f.forEach((e) => { fTag += e[ 0 ] });
+                return fTag.toUpperCase();
+            }
+        }
     }
 
     async directMsgNominations(steamID) {

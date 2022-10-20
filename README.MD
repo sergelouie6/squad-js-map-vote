@@ -119,6 +119,13 @@ If set to true the blacklisted layers will be filtered out also in whitelist mod
 ```json
 true
 ```
+#### minRaasEntries
+###### Description
+Minimum amount of RAAS layers in the vote list.
+###### Default
+```json
+2
+```
 #### hideVotesCount
 ###### Description
 Hides the number of votes a layer received in broadcast message.
@@ -138,7 +145,14 @@ false
 Message that is sent as broadcast to announce a vote.
 ###### Default
 ```json
-"✯ MAPVOTE ✯ Vote for the next map by writing in chat the corresponding number!"
+"✯ MAPVOTE ✯\nVote for the next map by writing in chat the corresponding number!"
+```
+#### voteWinnerBroadcastMessage
+###### Description
+Message that is sent as broadcast to announce the winning layer.
+###### Default
+```json
+"✯ MAPVOTE ✯\nThe winning layer is\n\n"
 ```
 #### allowedSameMapEntries
 ###### Description
@@ -204,9 +218,11 @@ Array of timeframes that allows to override options based on local time. See exa
     "layerLevelBlacklist": [ "BlackCoast_Seed" ],
     "layerLevelWhitelist": [ "Yeho", "Gorodok", "Mutaha", "Narva", "Tallil" ],
     "applyBlacklistToWhitelist": true,
+    "minRaasEntries": 2,
     "hideVotesCount": false,
     "showRerollOption": false,
-    "voteBroadcastMessage": "✯ MAPVOTE ✯ Vote for the next map by writing in chat the corresponding number!",
+    "voteBroadcastMessage": "✯ MAPVOTE ✯\nVote for the next map by writing in chat the corresponding number!",
+    "voteWinnerBroadcastMessage": "✯ MAPVOTE ✯\nThe winning layer is\n\n",
     "allowedSameMapEntries": 1,
     "logToDiscord": true,
     "channelID": "112233445566778899",

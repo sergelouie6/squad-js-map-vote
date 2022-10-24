@@ -485,11 +485,11 @@ export default class MapVote extends DiscordBasePlugin {
                 this.options.gamemodeWhitelist.includes(l.gamemode.toUpperCase()) &&
                 ![ this.server.currentLayer ? this.server.currentLayer.map.name : null, ...recentlyPlayedMaps ].includes(l.map.name) &&
                 (
-                    (this.options.layerFilteringMode.toLowerCase() == "blacklist" && !this.options.layerLevelBlacklist.find((fl) => l.layerid.toLowerCase().startsWith(fl.toLowerCase()))) ||
+                    (this.options.layerFilteringMode.toLowerCase() == "blacklist" && !this.options.layerLevelBlacklist.find((fl) => this.getLayersFromStringId(fl).map((e)=>e.layerid).includes(l.layerid))) ||
                     (
                         this.options.layerFilteringMode.toLowerCase() == "whitelist"
-                        && this.options.layerLevelWhitelist.find((fl) => l.layerid.toLowerCase().startsWith(fl.toLowerCase()))
-                        && !(this.options.applyBlacklistToWhitelist && this.options.layerLevelBlacklist.find((fl) => l.layerid.toLowerCase().startsWith(fl.toLowerCase())))
+                        && this.options.layerLevelWhitelist.find((fl) => this.getLayersFromStringId(fl).map((e)=>e.layerid).includes(l.layerid))
+                        && !(this.options.applyBlacklistToWhitelist && this.options.layerLevelBlacklist.find((fl) => this.getLayersFromStringId(fl).map((e)=>e.layerid).includes(l.layerid)))
                     )
                 )
             );
@@ -497,7 +497,8 @@ export default class MapVote extends DiscordBasePlugin {
                 const needMoreRAAS = !bypassRaasFilter && rnd_layers.filter((l) => l.gamemode === 'RAAS').length < this.options.minRaasEntries;
                 let l, maxtries = 20;
                 do l = randomElement(needMoreRAAS ? all_layers.filter((l) => l.gamemode.toLowerCase() == "raas") : all_layers); while ((rnd_layers.find(lf => lf.layerid == l.layerid) || rnd_layers.filter(lf => lf.map.name == l.map.name).length > (this.options.allowedSameMapEntries - 1)) && --maxtries >= 0)
-                if (maxtries > 0) {
+                if (maxtries > 0 && l) {
+                    // this.verbose(1,"Testing layer",l, maxtries);
                     rnd_layers.push(l);
                     this.nominations[ i ] = l.layerid
                     this.tallies[ i ] = 0;
@@ -582,7 +583,7 @@ export default class MapVote extends DiscordBasePlugin {
 
         if (this.options.votingDuration > 0) setTimeout(() => {
             this.endVoting();
-            this.broadcast(this.options.voteWinnerBroadcastMessage + this.formatFancyLayer(Layers.layers.find((l)=>l.layerid == this.updateNextMap())));
+            this.broadcast(this.options.voteWinnerBroadcastMessage + this.formatFancyLayer(Layers.layers.find((l) => l.layerid == this.updateNextMap())));
         }, this.options.votingDuration * 60 * 1000)
 
         // these need to be reset after reenabling voting
@@ -663,6 +664,13 @@ export default class MapVote extends DiscordBasePlugin {
                 return fTag.toUpperCase();
             }
         }
+    }
+
+    getLayersFromStringId(stringid) {
+        const cls = stringid.toLowerCase().split('_');
+        const ret = Layers.layers.filter((l) => ((cls[ 0 ] == "*" || l.layerid.toLowerCase().startsWith(cls[ 0 ])) && (l.gamemode.toLowerCase().startsWith(cls[ 1 ]) || (!cls[ 1 ] && [ 'RAAS', 'AAS', 'INVASION' ].includes(l.gamemode.toUpperCase()))) && (!cls[ 2 ] || parseInt(l.version.toLowerCase().replace(/v/gi, '')) == parseInt(cls[ 2 ].replace(/v/gi, '')))));
+        // this.verbose(1,"layers from string",stringid,cls,ret)
+        return ret;
     }
 
     async directMsgNominations(steamID) {

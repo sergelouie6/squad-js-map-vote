@@ -12,6 +12,7 @@ The `MapVote` plugin for squad js based on the original version https://github.c
 - `!vote start` - Starts a vote with 6 layers, random modes
 - `!vote cancel` - Cancels current round of voting
 - `!vote cancelauto` - Cancel scheduled automatic start of vote
+- `!vote end` - Gently ends the current vote and announces the winner layer
 - `!vote restart` - Restarts voting with 6 random maps and modes
 - `!vote broadcast` - Broadcasts current voting results - happens every 7m automatically
 

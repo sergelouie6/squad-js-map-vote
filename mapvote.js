@@ -166,6 +166,7 @@ export default class MapVote extends DiscordBasePlugin {
         this.or_options = { ...this.options };
         this.autovotestart = null;
         this.lastMapUpdate = new Date();
+        this.timeout_ps = []
 
         this.onNewGame = this.onNewGame.bind(this);
         this.onPlayerDisconnected = this.onPlayerDisconnected.bind(this);
@@ -204,6 +205,7 @@ export default class MapVote extends DiscordBasePlugin {
     }
 
     async onNewGame() {
+        for (let x of this.timeout_ps) clearTimeout(this.timeout_ps.pop())
         setTimeout(async () => {
             this.endVoting();
             this.trackedVotes = {};
@@ -356,6 +358,16 @@ export default class MapVote extends DiscordBasePlugin {
                 this.endVoting();
                 await this.warn(steamID, "Ending current vote");
                 return;
+            case "end": //gently ends the current vote and announces the winner layer
+                if (!isAdmin) return;
+
+                if (!this.votingEnabled) {
+                    await this.warn(steamID, "There is no vote running right now");
+                    return;
+                }
+                this.endVotingGently();
+                await this.warn(steamID, "Ending current vote");
+                return;
             case "cancelauto": //cancels the current vote and wont set next map to current winnner
                 if (!isAdmin) return;
 
@@ -485,11 +497,11 @@ export default class MapVote extends DiscordBasePlugin {
                 this.options.gamemodeWhitelist.includes(l.gamemode.toUpperCase()) &&
                 ![ this.server.currentLayer ? this.server.currentLayer.map.name : null, ...recentlyPlayedMaps ].includes(l.map.name) &&
                 (
-                    (this.options.layerFilteringMode.toLowerCase() == "blacklist" && !this.options.layerLevelBlacklist.find((fl) => this.getLayersFromStringId(fl).map((e)=>e.layerid).includes(l.layerid))) ||
+                    (this.options.layerFilteringMode.toLowerCase() == "blacklist" && !this.options.layerLevelBlacklist.find((fl) => this.getLayersFromStringId(fl).map((e) => e.layerid).includes(l.layerid))) ||
                     (
                         this.options.layerFilteringMode.toLowerCase() == "whitelist"
-                        && this.options.layerLevelWhitelist.find((fl) => this.getLayersFromStringId(fl).map((e)=>e.layerid).includes(l.layerid))
-                        && !(this.options.applyBlacklistToWhitelist && this.options.layerLevelBlacklist.find((fl) => this.getLayersFromStringId(fl).map((e)=>e.layerid).includes(l.layerid)))
+                        && this.options.layerLevelWhitelist.find((fl) => this.getLayersFromStringId(fl).map((e) => e.layerid).includes(l.layerid))
+                        && !(this.options.applyBlacklistToWhitelist && this.options.layerLevelBlacklist.find((fl) => this.getLayersFromStringId(fl).map((e) => e.layerid).includes(l.layerid)))
                     )
                 )
             );
@@ -581,10 +593,7 @@ export default class MapVote extends DiscordBasePlugin {
             return;
         }
 
-        if (this.options.votingDuration > 0) setTimeout(() => {
-            this.endVoting();
-            this.broadcast(this.options.voteWinnerBroadcastMessage + this.formatFancyLayer(Layers.layers.find((l) => l.layerid == this.updateNextMap())));
-        }, this.options.votingDuration * 60 * 1000)
+        if (this.options.votingDuration > 0) this.timeout_ps.push(setTimeout(this.endVotingGently, this.options.votingDuration * 60 * 1000))
 
         // these need to be reset after reenabling voting
         this.trackedVotes = {};
@@ -596,6 +605,11 @@ export default class MapVote extends DiscordBasePlugin {
         this.firstBroadcast = true;
         this.broadcastNominations();
         this.broadcastIntervalTask = setInterval(this.broadcastNominations, toMils(this.options.voteBroadcastInterval));
+    }
+
+    endVotingGently() {
+        this.endVoting();
+        this.broadcast(this.options.voteWinnerBroadcastMessage + this.formatFancyLayer(Layers.layers.find((l) => l.layerid == this.updateNextMap())));
     }
 
     endVoting() {

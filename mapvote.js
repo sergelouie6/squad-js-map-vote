@@ -581,12 +581,15 @@ export default class MapVote extends DiscordBasePlugin {
     //checks if there are enough players to start voting, if not binds itself to player connected
     //when there are enough players it clears old votes, sets up new nominations, and starts broadcast
     beginVoting(force = false, steamid = null, cmdLayers = []) {
+        if (!this.options.automaticVoteStart && !force) return;
+
         this.verbose(1, "Starting vote")
         const playerCount = this.server.players.length;
         const minPlayers = this.options.minPlayersForVote;
 
         if (this.votingEnabled) //voting has already started
             return;
+
 
         if (playerCount < minPlayers && !force) {
             this.autovotestart = setTimeout(() => { this.beginVoting(force, steamid, cmdLayers) }, 60 * 1000)

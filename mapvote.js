@@ -490,7 +490,7 @@ export default class MapVote extends DiscordBasePlugin {
         const sanitizedLayers = Layers.layers.filter((l) => l.layerid && l.map);
         const maxOptions = this.options.showRerollOption ? 5 : 6;
         if (!cmdLayers || cmdLayers.length == 0) {
-            const recentlyPlayedMaps = this.objArrToValArr(this.server.layerHistory.splice(0, this.options.numberRecentMapsToExlude), "layer", "map", "name");
+            const recentlyPlayedMaps = this.objArrToValArr(this.server.layerHistory.slice(0, this.options.numberRecentMapsToExlude), "layer", "map", "name");
             this.verbose(1, "Recently played maps: " + recentlyPlayedMaps.join(', '))
 
             const all_layers = sanitizedLayers.filter((l) =>

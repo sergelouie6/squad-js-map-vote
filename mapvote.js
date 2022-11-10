@@ -464,7 +464,7 @@ export default class MapVote extends DiscordBasePlugin {
     }
 
     //TODO: right now if version is set to "Any" no caf layers will be selected
-    populateNominations(steamid = null, cmdLayers = [], bypassRaasFilter = false) //gets nomination strings from layer options
+    populateNominations(steamid = null, cmdLayers = [], bypassRaasFilter = false, tries = 10) //gets nomination strings from layer options
     {
         this.options.gamemodeWhitelist.forEach((e, k, a) => a[ k ] = e.toUpperCase());
         // this.nominations.push(builtLayerString);
@@ -491,7 +491,7 @@ export default class MapVote extends DiscordBasePlugin {
         const maxOptions = this.options.showRerollOption ? 5 : 6;
         if (!cmdLayers || cmdLayers.length == 0) {
             const recentlyPlayedMaps = this.objArrToValArr(this.server.layerHistory.slice(0, this.options.numberRecentMapsToExlude), "layer", "map", "name");
-            this.verbose(1, "Recently played maps: " + recentlyPlayedMaps.join(', '))
+            this.verbose(1, "Recently played maps: " + recentlyPlayedMaps.map((l)=>l.map.name).join(', '))
 
             const all_layers = sanitizedLayers.filter((l) =>
                 this.options.gamemodeWhitelist.includes(l.gamemode.toUpperCase()) &&

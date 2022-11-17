@@ -2,11 +2,9 @@
 
 // import BasePlugin from "./base-plugin.js";
 import DiscordBasePlugin from './discord-base-plugin.js';
-
-import fs from "fs";
 import { Layers } from "../layers/index.js"
 import axios from "axios"
-import { time } from 'console';
+import Layer from '../layers/layer.js';
 
 export default class MapVote extends DiscordBasePlugin {
     static get description() {
@@ -182,6 +180,7 @@ export default class MapVote extends DiscordBasePlugin {
     }
 
     async mount() {
+        await this.updateLayerList();
         this.server.on('NEW_GAME', this.onNewGame);
         this.server.on('CHAT_MESSAGE', this.onChatMessage);
         this.server.on('PLAYER_DISCONNECTED', this.onPlayerDisconnected);
@@ -487,11 +486,14 @@ export default class MapVote extends DiscordBasePlugin {
         this.factionStrings = [];
         let rnd_layers = [];
         // let rnd_layers = [];
+
+
+        const removeCafLayers = true;
         const sanitizedLayers = Layers.layers.filter((l) => l.layerid && l.map);
         const maxOptions = this.options.showRerollOption ? 5 : 6;
         if (!cmdLayers || cmdLayers.length == 0) {
             const recentlyPlayedMaps = this.objArrToValArr(this.server.layerHistory.slice(0, this.options.numberRecentMapsToExlude), "layer", "map", "name");
-            this.verbose(1, "Recently played maps: " + recentlyPlayedMaps.map((l)=>l.map.name).join(', '))
+            this.verbose(1, "Recently played maps: " + recentlyPlayedMaps.filter((l) => l && l.map && l.map.name).map((l) => l.map.name).join(', '))
 
             const all_layers = sanitizedLayers.filter((l) =>
                 this.options.gamemodeWhitelist.includes(l.gamemode.toUpperCase()) &&
@@ -504,6 +506,7 @@ export default class MapVote extends DiscordBasePlugin {
                         && !(this.options.applyBlacklistToWhitelist && this.options.layerLevelBlacklist.find((fl) => this.getLayersFromStringId(fl).map((e) => e.layerid).includes(l.layerid)))
                     )
                 )
+                && !(removeCafLayers && [ getTranslation(l.teams[ 0 ].faction), getTranslation(l.teams[ 1 ].faction) ].includes("CAF"))
             );
             for (let i = 1; i <= maxOptions; i++) {
                 const needMoreRAAS = !bypassRaasFilter && rnd_layers.filter((l) => l.gamemode === 'RAAS').length < this.options.minRaasEntries;
@@ -519,7 +522,8 @@ export default class MapVote extends DiscordBasePlugin {
             }
             // if (!bypassRaasFilter && this.options.gamemodeWhitelist.includes("RAAS") && rnd_layers.filter((l) => l.gamemode === 'RAAS').length < Math.floor(maxOptions / 2)) this.populateNominations();
             if (this.nominations.length == 0) {
-                this.populateNominations(steamid, cmdLayers, bypassRaasFilter);
+                if (--tries > 0) this.populateNominations(steamid, cmdLayers, bypassRaasFilter, tries);
+                else this.warn("")
                 return;
             }
         } else {
@@ -569,12 +573,12 @@ export default class MapVote extends DiscordBasePlugin {
 
         function getTranslation(t) {
             if (translations[ t.faction ]) return translations[ t.faction ]
-            else {
+            else if(t.faction){
                 const f = t.faction.split(' ');
                 let fTag = "";
                 f.forEach((e) => { fTag += e[ 0 ] });
                 return fTag.toUpperCase();
-            }
+            }else return "Unknown"
         }
     }
 
@@ -773,6 +777,19 @@ export default class MapVote extends DiscordBasePlugin {
         }
 
         return ties.map(i => this.nominations[ i ]);
+    }
+
+    async updateLayerList() {
+        Layers.layers = [];
+
+        this.verbose(1, 'Pulling [All For One] layer list...');
+        const response = await axios.get(
+            'http://hub.afocommunity.com/api/layers.json'
+        );
+
+        for (const layer of response.data.Maps) {
+            Layers.layers.push(new Layer(layer));
+        }
     }
 }
 

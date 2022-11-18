@@ -88,6 +88,11 @@ export default class MapVote extends DiscordBasePlugin {
                 description: 'if set to true the blacklisted layers won\'t be included also in whitelist mode',
                 default: true
             },
+            factionsBlacklist: {
+                required: false,
+                description: "factions to exclude in map vote. ( ex: ['CAF'] )",
+                default: []
+            },
             minRaasEntries: {
                 required: false,
                 description: 'Minimum amount of RAAS layers in the vote list.',
@@ -485,10 +490,7 @@ export default class MapVote extends DiscordBasePlugin {
         this.tallies = [];
         this.factionStrings = [];
         let rnd_layers = [];
-        // let rnd_layers = [];
-
-
-        const removeCafLayers = true;
+        
         const sanitizedLayers = Layers.layers.filter((l) => l.layerid && l.map);
         const maxOptions = this.options.showRerollOption ? 5 : 6;
         if (!cmdLayers || cmdLayers.length == 0) {
@@ -506,7 +508,7 @@ export default class MapVote extends DiscordBasePlugin {
                         && !(this.options.applyBlacklistToWhitelist && this.options.layerLevelBlacklist.find((fl) => this.getLayersFromStringId(fl).map((e) => e.layerid).includes(l.layerid)))
                     )
                 )
-                && !(removeCafLayers && [ getTranslation(l.teams[ 0 ].faction), getTranslation(l.teams[ 1 ].faction) ].includes("CAF"))
+                && !(removeCafLayers && this.options.factionsBlacklist.find((f)=>[ getTranslation(l.teams[ 0 ].faction), getTranslation(l.teams[ 1 ].faction) ].includes(f)))
             );
             for (let i = 1; i <= maxOptions; i++) {
                 const needMoreRAAS = !bypassRaasFilter && rnd_layers.filter((l) => l.gamemode === 'RAAS').length < this.options.minRaasEntries;

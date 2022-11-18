@@ -120,6 +120,13 @@ If set to true the blacklisted layers will be filtered out also in whitelist mod
 ```json
 true
 ```
+#### factionsBlacklist
+###### Description
+factions to exclude in map vote. ( ex: ['CAF'] )
+###### Default
+```json
+[]
+```
 #### minRaasEntries
 ###### Description
 Minimum amount of RAAS layers in the vote list.
@@ -219,6 +226,7 @@ Array of timeframes that allows to override options based on local time. See exa
     "layerLevelBlacklist": [ "BlackCoast_Seed" ],
     "layerLevelWhitelist": [ "Yeho", "Gorodok", "Mutaha", "Narva", "Tallil" ],
     "applyBlacklistToWhitelist": true,
+    "factionsBlacklist": [ "CAF", "INS" ],
     "minRaasEntries": 2,
     "hideVotesCount": false,
     "showRerollOption": false,

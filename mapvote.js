@@ -573,12 +573,12 @@ export default class MapVote extends DiscordBasePlugin {
 
         function getTranslation(t) {
             if (translations[ t.faction ]) return translations[ t.faction ]
-            else if(t.faction){
+            else if (t.faction) {
                 const f = t.faction.split(' ');
                 let fTag = "";
                 f.forEach((e) => { fTag += e[ 0 ] });
                 return fTag.toUpperCase();
-            }else return "Unknown"
+            } else return "Unknown"
         }
     }
 
@@ -780,16 +780,18 @@ export default class MapVote extends DiscordBasePlugin {
     }
 
     async updateLayerList() {
-        Layers.layers = [];
+        // Layers.layers = [];
 
         this.verbose(1, 'Pulling [All For One] layer list...');
         const response = await axios.get(
-            'http://hub.afocommunity.com/api/layers.json'
+            'http://hub.afocommunity.com/api/layers.json', [ 0 ]
         );
 
         for (const layer of response.data.Maps) {
-            Layers.layers.push(new Layer(layer));
+            if (!Layers.layers.find((e) => e.layerid == layer.layerid)) Layers.layers.push(new Layer(layer));
         }
+
+        this.verbose(1, 'Layer list updated');
     }
 }
 

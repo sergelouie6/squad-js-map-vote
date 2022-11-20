@@ -539,7 +539,7 @@ export default class MapVote extends DiscordBasePlugin {
                         (cls[ 0 ] == "*" || l.layerid.toLowerCase().startsWith(cls[ 0 ]))
                         && (l.gamemode.toLowerCase().startsWith(cls[ 1 ]) || (!cls[ 1 ] && [ 'RAAS', 'AAS', 'INVASION' ].includes(l.gamemode.toUpperCase())))
                         && (!cls[ 2 ] || l.version.toLowerCase().startsWith("v" + cls[ 2 ].replace(/v/gi, '')))
-                        && !(this.options.factionsBlacklist.find((f) => [ getTranslation(l.teams[ 0 ].faction), getTranslation(l.teams[ 1 ].faction) ].includes(f)))
+                        && !(this.options.factionsBlacklist.find((f) => [ getTranslation(l.teams[ 0 ]), getTranslation(l.teams[ 1 ]) ].includes(f)))
                     ));
                     let l, maxtries = 10;
                     do l = randomElement(fLayers); while ((rnd_layers.filter(lf => lf.map.name == l.map.name).length > (this.options.allowedSameMapEntries - 1)) && --maxtries >= 0)
@@ -575,10 +575,10 @@ export default class MapVote extends DiscordBasePlugin {
 
         }
 
-        function getTranslation(t) {
-            if (translations[ t.faction ]) return translations[ t.faction ]
-            else if (t.faction) {
-                const f = t.faction.split(' ');
+        function getTranslation(layer) {
+            if (translations[ layer.faction ]) return translations[ layer.faction ]
+            else if (layer.faction) {
+                const f = layer.faction.split(' ');
                 let fTag = "";
                 f.forEach((e) => { fTag += e[ 0 ] });
                 return fTag.toUpperCase();

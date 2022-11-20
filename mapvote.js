@@ -152,6 +152,8 @@ export default class MapVote extends DiscordBasePlugin {
 
         this.options.timeFrames.forEach((e, key, arr) => { arr[ key ].id = key + 1 });
 
+        if (this.options.allowedSameMapEntries < 1) this.options.allowedSameMapEntries = 1
+
         this.voteRules = {}; //data object holding vote configs
         this.nominations = []; //layer strings for the current vote choices
         this.trackedVotes = {}; //player votes, keyed by steam id

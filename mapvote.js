@@ -193,10 +193,7 @@ export default class MapVote extends DiscordBasePlugin {
         this.broadcast = (msg) => { this.server.rcon.broadcast(msg); };
         this.warn = (steamid, msg) => { this.server.rcon.warn(steamid, msg); };
 
-        process.on('uncaughtException', function (err) {
-            this.savePersistentData();
-            throw err;
-        });
+        process.on('uncaughtException', this.savePersistentData);
     }
 
     async mount() {

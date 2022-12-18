@@ -876,7 +876,7 @@ export default class MapVote extends DiscordBasePlugin {
         );
 
         for (const layer of response.data.Maps) {
-            if (!Layers.layers.find((e) => e.layerid == layer.layerid)) Layers.layers.push(new Layer(layer));
+            if (!Layers.layers.find((e) => e.layerid == layer.rawName)) Layers.layers.push(new Layer(layer));
         }
 
         this.verbose(1, 'Layer list updated');

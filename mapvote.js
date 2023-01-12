@@ -150,6 +150,11 @@ export default class MapVote extends DiscordBasePlugin {
                 required: false,
                 description: 'Array of timeframes to override options',
                 default: []
+            },
+            minimumVotesToAcceptResult: {
+                required: false,
+                description: "Minimum votes per map to accept result.",
+                default: 1
             }
         };
     }
@@ -278,7 +283,6 @@ export default class MapVote extends DiscordBasePlugin {
         }
     }
     setSeedingMode(isNewGameEvent = false) {
-        // setTimeout(()=>{this.msgDirect('76561198419229279',"MV\ntest\ntest")},1000)
         // this.msgBroadcast("[MapVote] Seeding mode active")
         const baseDataExist = this && this.options && this.server && this.server.players;
         if (baseDataExist) {
@@ -853,15 +857,17 @@ export default class MapVote extends DiscordBasePlugin {
         let highestScore = -Infinity;
         for (let choice in this.tallies) {
             const score = this.tallies[ choice ];
-            if (score < highestScore)
-                continue;
-            else if (score > highestScore) {
-                highestScore = score;
-                ties.length = 0;
-                ties.push(choice);
+            if (score >= this.options.minimumVotesToAcceptResult) {
+                if (score < highestScore)
+                    continue;
+                else if (score > highestScore) {
+                    highestScore = score;
+                    ties.length = 0;
+                    ties.push(choice);
+                }
+                else // equal
+                    ties.push(choice);
             }
-            else // equal
-                ties.push(choice);
         }
 
         return ties.map(i => this.nominations[ i ]);

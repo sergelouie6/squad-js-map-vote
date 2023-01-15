@@ -202,6 +202,7 @@ export default class MapVote extends DiscordBasePlugin {
         this.server.on('NEW_GAME', this.onNewGame);
         this.server.on('CHAT_MESSAGE', this.onChatMessage);
         this.server.on('PLAYER_DISCONNECTED', this.onPlayerDisconnected);
+        this.server.on('ROUND_ENDED', this.endVotingGently)
         setTimeout(() => {
             this.verbose(1, 'Enabled late listeners.');
             this.server.on('PLAYER_CONNECTED', this.setSeedingMode);
@@ -298,7 +299,7 @@ export default class MapVote extends DiscordBasePlugin {
                         }
                     } else this.verbose(1, "Bad data (currentLayer). Seeding mode for current layer skipped to prevent errors.");
 
-                    if (this.server.nextLayer) {
+                    /*if (this.server.nextLayer) {
                         const nextMaps = seedingMaps.filter((l) => (!this.server.currentLayer || l.layerid != this.server.currentLayer.layerid))
                         let rndMap2;
                         do rndMap2 = randomElement(nextMaps);
@@ -308,7 +309,7 @@ export default class MapVote extends DiscordBasePlugin {
                             const newNextMap = rndMap2.layerid;
                             this.server.rcon.execute(`AdminSetNextLayer ${newNextMap} `);
                         }
-                    } else this.verbose(1, "Bad data (nextLayer). Seeding mode for next layer skipped to prevent errors.");
+                    } else this.verbose(1, "Bad data (nextLayer). Seeding mode for next layer skipped to prevent errors.");*/
 
                 } else this.verbose(1, `Player count doesn't allow seeding mode (${this.server.players.length}/20)`);
             } else this.verbose(1, "Seeding mode disabled in config");
@@ -416,7 +417,7 @@ export default class MapVote extends DiscordBasePlugin {
             case "stopesqjs":
             case "restartsqjs":
                 if (!isAdmin) return;
-                this.warn(steamID, "Saving persistent data.\nTerminating SquadJS process.\nIf managed by a process manager it will automatically restart.")
+                await this.warn(steamID, "Saving persistent data.\nTerminating SquadJS process.\nIf managed by a process manager it will automatically restart.")
                 this.savePersistentData();
                 process.exit(0);
                 return;
@@ -642,9 +643,9 @@ export default class MapVote extends DiscordBasePlugin {
         this.broadcastIntervalTask = setInterval(this.broadcastNominations, toMils(this.options.voteBroadcastInterval));
     }
 
-    endVotingGently() {
+    async endVotingGently() {
         this.endVoting();
-        this.broadcast(this.options.voteWinnerBroadcastMessage + this.formatFancyLayer(Layers.layers.find((l) => l.layerid == this.updateNextMap())));
+        await this.broadcast(this.options.voteWinnerBroadcastMessage + this.formatFancyLayer(Layers.layers.find((l) => l.layerid == this.updateNextMap())));
     }
 
     endVoting() {

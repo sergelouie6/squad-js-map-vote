@@ -645,7 +645,53 @@ export default class MapVote extends DiscordBasePlugin {
 
     async endVotingGently() {
         this.endVoting();
-        await this.broadcast(this.options.voteWinnerBroadcastMessage + this.formatFancyLayer(Layers.layers.find((l) => l.layerid == this.updateNextMap())));
+        const winnerLayer = Layers.layers.find((l) => l.layerid == this.updateNextMap());
+        const fancyWinner = this.formatFancyLayer(winnerLayer);
+        await this.broadcast(this.options.voteWinnerBroadcastMessage + fancyWinner);
+
+        if (!this.options.logToDiscord) return
+        return await this.sendDiscordMessage({
+            embed: {
+                title: `Vote winner: ${fancyWinner}`,
+                color: 16761867,
+                fields: [
+                    {
+                        name: 'Map',
+                        value: winnerLayer.map.name,
+                        inline: true
+                    },
+                    {
+                        name: 'Gamemode',
+                        value: winnerLayer.gamemode,
+                        inline: true
+                    },
+                    {
+                        name: 'Version',
+                        value: winnerLayer.version,
+                        inline: true
+                    },
+                    {
+                        name: 'LayerID',
+                        value: winnerLayer.layerid,
+                        inline: false
+                    },
+                    {
+                        name: 'Team 1',
+                        value: winnerLayer.teams[ 0 ].faction,
+                        inline: true
+                    },
+                    {
+                        name: 'Team 2',
+                        value: winnerLayer.teams[ 1 ].faction,
+                        inline: true
+                    },
+                ],
+                image: {
+                    url: `https://squad-data.nyc3.cdn.digitaloceanspaces.com/main/${winnerLayer.layerid}.jpg`
+                },
+            },
+            timestamp: (new Date()).toISOString()
+        });
     }
 
     endVoting() {
@@ -760,7 +806,7 @@ export default class MapVote extends DiscordBasePlugin {
 
     async logVoteToDiscord(message) {
         if (!this.options.logToDiscord) return
-        await this.sendDiscordMessage({
+        return await this.sendDiscordMessage({
             embed: {
                 title: 'Vote Started',
                 color: 16761867,

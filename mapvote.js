@@ -189,6 +189,7 @@ export default class MapVote extends DiscordBasePlugin {
         this.timeframeOptionOverrider = this.timeframeOptionOverrider.bind(this);
         this.savePersistentData = this.savePersistentData.bind(this)
         this.restorePersistentData = this.restorePersistentData.bind(this)
+        this.endVotingGently = this.endVotingGently.bind(this)
 
         this.broadcast = (msg) => { this.server.rcon.broadcast(msg); };
         this.warn = (steamid, msg) => { this.server.rcon.warn(steamid, msg); };
@@ -917,9 +918,9 @@ export default class MapVote extends DiscordBasePlugin {
     async updateLayerList() {
         // Layers.layers = [];
 
-        this.verbose(1, 'Pulling [All For One] layer list...');
+        this.verbose(1, 'Pulling updated layer list...');
         const response = await axios.get(
-            'http://hub.afocommunity.com/api/layers.json', [ 0 ]
+            'https://raw.githubusercontent.com/Squad-Wiki/squad-wiki-pipeline-map-data/master/completed_output/_Current%20Version/finished.json'
         );
 
         for (const layer of response.data.Maps) {

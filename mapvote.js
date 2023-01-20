@@ -120,6 +120,11 @@ export default class MapVote extends DiscordBasePlugin {
                 description: 'Message that is sent as broadcast to announce the winning layer',
                 default: "✯ MAPVOTE ✯\nThe winning layer is\n\n"
             },
+            showWinnerBroadcastMessage: {
+                required: false,
+                description: 'Enables the broadcast at the end of the voting.',
+                default: true
+            },
             allowedSameMapEntries: {
                 required: false,
                 description: 'Allowed NUMBER of duplicate map entries in vote list',
@@ -648,7 +653,7 @@ export default class MapVote extends DiscordBasePlugin {
         this.endVoting();
         const winnerLayer = Layers.layers.find((l) => l.layerid == this.updateNextMap());
         const fancyWinner = this.formatFancyLayer(winnerLayer);
-        await this.broadcast(this.options.voteWinnerBroadcastMessage + fancyWinner);
+        if (this.showWinnerBroadcastMessage) await this.broadcast(this.options.voteWinnerBroadcastMessage + fancyWinner);
 
         if (!this.options.logToDiscord) return
         return await this.sendDiscordMessage({

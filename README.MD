@@ -162,6 +162,13 @@ Message that is sent as broadcast to announce the winning layer.
 ```json
 "✯ MAPVOTE ✯\nThe winning layer is\n\n"
 ```
+#### showWinnerBroadcastMessage
+###### Description
+Enables the broadcast at the end of the voting.
+###### Default
+```json
+true
+```
 #### allowedSameMapEntries
 ###### Description
 Allowed max NUMBER of times a map could appear in the vote list.
@@ -241,6 +248,7 @@ Array of timeframes that allows to override options based on local time. See exa
     "showRerollOption": false,
     "voteBroadcastMessage": "✯ MAPVOTE ✯\nVote for the next map by writing in chat the corresponding number!",
     "voteWinnerBroadcastMessage": "✯ MAPVOTE ✯\nThe winning layer is\n\n",
+    "showWinnerBroadcastMessage": true,
     "allowedSameMapEntries": 1,
     "logToDiscord": true,
     "channelID": "112233445566778899",

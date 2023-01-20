@@ -151,6 +151,11 @@ export default class MapVote extends DiscordBasePlugin {
                 description: "Timezone relative to UTC time. 0 for UTC, 2 for CEST (UTC+2), -1 (UTC-1) ",
                 default: 0
             },
+            includeMainAssetsInBroadcast: {
+                required: false,
+                description: "Shows/Hides Helis and Tanks in the broadcast if they are included in the voting layer",
+                default: true
+            },
             timeFrames: {
                 required: false,
                 description: 'Array of timeframes to override options',
@@ -196,8 +201,8 @@ export default class MapVote extends DiscordBasePlugin {
         this.restorePersistentData = this.restorePersistentData.bind(this)
         this.endVotingGently = this.endVotingGently.bind(this)
 
-        this.broadcast = (msg) => { this.server.rcon.broadcast(msg); };
-        this.warn = (steamid, msg) => { this.server.rcon.warn(steamid, msg); };
+        this.broadcast = async (msg) => { await this.server.rcon.broadcast(msg); };
+        this.warn = async (steamid, msg) => { await this.server.rcon.warn(steamid, msg); };
 
         process.on('uncaughtException', this.savePersistentData);
     }
@@ -726,11 +731,24 @@ export default class MapVote extends DiscordBasePlugin {
         if (this.nominations.length > 0 && this.votingEnabled) {
             await this.broadcast(this.options.voteBroadcastMessage);
             let nominationStrings = [];
+
             for (let choice = 1; choice < this.nominations.length; choice++) {
                 choice = Number(choice);
                 let vLayer = Layers.layers.find(e => e.layerid == this.nominations[ choice ]);
-                nominationStrings.push(formatChoice(choice, vLayer.map.name + ' ' + vLayer.gamemode + ' ' + this.factionStrings[ choice ], this.tallies[ choice ], (this.options.hideVotesCount || this.firstBroadcast)));
+                // const allVecs = vLayer.teams[0].vehicles.concat(vLayer.teams[1].vehicles);
+                const helis = vLayer.teams[ 0 ].numberOfHelicopters + vLayer.teams[ 1 ].numberOfHelicopters
+                const tanks = vLayer.teams[ 0 ].numberOfTanks + vLayer.teams[ 1 ].numberOfTanks
+                let assets = [];
+                if (helis > 0) assets.push('Helis');
+                if (tanks > 0) assets.push('Tanks');
+                const vehiclesString = this.options.includeMainAssetsInBroadcast ? ' ' + assets.join('-') : '';
+                nominationStrings.push(formatChoice(choice, vLayer.map.name + ' ' + vLayer.gamemode + ' ' + this.factionStrings[ choice ] + vehiclesString, this.tallies[ choice ], (this.options.hideVotesCount || this.firstBroadcast)));
+                if (nominationStrings.length == 3) {
+                    await this.broadcast(nominationStrings.join("\n"));
+                    nominationStrings = [];
+                }
             }
+
             if (this.nominations[ 0 ]) nominationStrings.push(formatChoice(0, this.nominations[ 0 ], this.tallies[ 0 ], (this.options.hideVotesCount || this.firstBroadcast)))
             await this.broadcast(nominationStrings.join("\n"));
 

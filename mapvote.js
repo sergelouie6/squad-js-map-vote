@@ -429,7 +429,7 @@ export default class MapVote extends DiscordBasePlugin {
             case "restartsqjs":
                 if (!isAdmin) return;
                 await this.warn(steamID, "Saving persistent data.\nTerminating SquadJS process.\nIf managed by a process manager it will automatically restart.")
-                this.savePersistentData();
+                this.savePersistentData(steamID);
                 process.exit(0);
                 return;
             default:
@@ -797,8 +797,17 @@ export default class MapVote extends DiscordBasePlugin {
         let strMsg = "";
         for (let choice in this.nominations) {
             choice = Number(choice);
+
+            let vLayer = Layers.layers.find(e => e.layerid == this.nominations[ choice ]);
+            // const allVecs = vLayer.teams[0].vehicles.concat(vLayer.teams[1].vehicles);
+            // const helis = vLayer?.teams[ 0 ].numberOfHelicopters || 0 + vLayer?.teams[ 1 ].numberOfHelicopters || 0
+            // const tanks = vLayer?.teams[ 0 ].numberOfTanks || 0 + vLayer?.teams[ 1 ].numberOfTanks || 0
+            // let assets = [];
+            // if (helis > 0) assets.push('Helis');
+            // if (tanks > 0) assets.push('Tanks');
+            // const vehiclesString = ' ' + assets.join('-');
             // await this.msgDirect(steamID, formatChoice(choice, this.nominations[ choice ], this.tallies[ choice ]));
-            strMsg += (steamID, formatChoice(choice, this.nominations[ choice ], this.tallies[ choice ])) + "\n";
+            strMsg += (steamID, formatChoice(choice, this.nominations[ choice ], this.tallies[ choice ])) + `H:${helis}-T:${tanks}` + "\n";
         }
         strMsg.trim();
         if (steamID) this.warn(steamID, strMsg)
@@ -873,8 +882,8 @@ export default class MapVote extends DiscordBasePlugin {
             this.verbose(1, "Error restoring persistent data", e)
             return
         }
-
-        for (let k in bkData.server) this.server[ k ] = bkData.server[ k ];
+        if (bkData.manualRestartSender && bkData.manualRestartSender != "") this.warn(bkData.manualRestartSender,`SquadJS has completed the restart.\nPersistent data restored.`)
+            for (let k in bkData.server) this.server[ k ] = bkData.server[ k ];
 
         const maxSecondsDiffierence = 60
         if ((new Date() - new Date(bkData.saveDateTime)) / 1000 > maxSecondsDiffierence) return
@@ -891,9 +900,8 @@ export default class MapVote extends DiscordBasePlugin {
     }
 
 
-    savePersistentData() {
+    savePersistentData(steamID = null) {
         if (this.options.persistentDataFile == "") return;
-
 
         const saveDt = {
             custom: {
@@ -910,6 +918,7 @@ export default class MapVote extends DiscordBasePlugin {
                 factionStrings: this.factionStrings,
                 firstBroadcast: this.firstBroadcast
             },
+            manualRestartSender: steamID,
             saveDateTime: new Date()
         }
         // this.verbose(1, `Saving persistent data to: ${this.options.persistentDataFile}\n`, saveDt.server.layerHistory)

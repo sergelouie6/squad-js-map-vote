@@ -26,6 +26,11 @@ export default class MapVote extends DiscordBasePlugin {
                 description: "command name to use in chat",
                 default: "!vote"
             },
+            entriesAmount: {
+                required: false,
+                description: "Amount of entries generated for automatic votes",
+                default: 6
+            },
             automaticVoteStart: {
                 required: false,
                 description: "a map vote will automatically start after a new match if set to true",
@@ -527,7 +532,7 @@ export default class MapVote extends DiscordBasePlugin {
         let rnd_layers = [];
 
         const sanitizedLayers = Layers.layers.filter((l) => l.layerid && l.map);
-        const maxOptions = this.options.showRerollOption ? 5 : 6;
+        const maxOptions = this.options.showRerollOption ? 20 : 21;
 
         const recentlyPlayedMaps = this.objArrToValArr(this.server.layerHistory.slice(0, this.options.numberRecentMapsToExlude), "layer", "map", "name");
         this.verbose(1, "Recently played maps: " + recentlyPlayedMaps.join(', '));//recentlyPlayedMaps.filter((l) => l && l.map && l.map.name).map((l) => l.map.name).join(', '))
@@ -576,6 +581,10 @@ export default class MapVote extends DiscordBasePlugin {
                         && (l.gamemode.toLowerCase().startsWith(cls[ 1 ]) || (!cls[ 1 ] && [ 'RAAS', 'AAS', 'INVASION' ].includes(l.gamemode.toUpperCase())))
                         && (!cls[ 2 ] || l.version.toLowerCase().startsWith("v" + cls[ 2 ].replace(/v/gi, '')))
                         && !(this.options.factionsBlacklist.find((f) => [ getTranslation(l.teams[ 0 ]), getTranslation(l.teams[ 1 ]) ].includes(f)))
+                        && (cls[ 3 ] || !(
+                            this.options.layerLevelBlacklist.find((fl) => this.getLayersFromStringId(fl).map((e) => e.layerid).includes(l.layerid))
+                            || this.options.factionsBlacklist.find((f) => [ getTranslation(l.teams[ 0 ]), getTranslation(l.teams[ 1 ]) ].includes(f))
+                        ))
                     ));
                     let l, maxtries = 10;
                     do l = randomElement(fLayers); while ((rnd_layers.filter(lf => lf.map.name == l.map.name).length > (this.options.allowedSameMapEntries - 1)) && --maxtries >= 0)
@@ -882,8 +891,14 @@ export default class MapVote extends DiscordBasePlugin {
             this.verbose(1, "Error restoring persistent data", e)
             return
         }
-        if (bkData.manualRestartSender && bkData.manualRestartSender != "") this.warn(bkData.manualRestartSender,`SquadJS has completed the restart.\nPersistent data restored.`)
-            for (let k in bkData.server) this.server[ k ] = bkData.server[ k ];
+        if (bkData.manualRestartSender && bkData.manualRestartSender != "") {
+            (async () => {
+                await this.warn(bkData.manualRestartSender, `SquadJS has completed the restart.\nPersistent data restored.`)
+                this.verbose(1, `Restart confirmation sent to SteamID: "${bkData.manualRestartSender}"`)
+            })()
+        }
+
+        for (let k in bkData.server) this.server[ k ] = bkData.server[ k ];
 
         const maxSecondsDiffierence = 60
         if ((new Date() - new Date(bkData.saveDateTime)) / 1000 > maxSecondsDiffierence) return

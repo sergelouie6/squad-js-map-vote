@@ -231,6 +231,7 @@ Array of timeframes that allows to override options based on local time. See exa
     "plugin": "MapVote",
     "enabled": true,
     "discordClient": "discord",
+    "entriesAmount": 6,
     "automaticVoteStart": true,
     "votingDuration": 0,
     "minPlayersForVote": 30,

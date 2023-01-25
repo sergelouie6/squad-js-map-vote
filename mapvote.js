@@ -115,6 +115,11 @@ export default class MapVote extends DiscordBasePlugin {
                 description: 'vote option to restart the vote with random entries',
                 default: false
             },
+            showRerollOptionInCustomVotes: {
+                required: false,
+                description: 'enables/disables the reroll option only in custom votes. showRerollOption must be set to true',
+                default: false
+            },
             voteBroadcastMessage: {
                 required: false,
                 description: 'Message that is sent as broadcast to announce a vote',
@@ -533,11 +538,13 @@ export default class MapVote extends DiscordBasePlugin {
 
         const sanitizedLayers = Layers.layers.filter((l) => l.layerid && l.map);
         const maxOptions = this.options.showRerollOption ? 20 : 21;
+        const optionAmount = Math.min(maxOptions, this.options.entriesAmount);
 
         const recentlyPlayedMaps = this.objArrToValArr(this.server.layerHistory.slice(0, this.options.numberRecentMapsToExlude), "layer", "map", "name");
         this.verbose(1, "Recently played maps: " + recentlyPlayedMaps.join(', '));//recentlyPlayedMaps.filter((l) => l && l.map && l.map.name).map((l) => l.map.name).join(', '))
 
-        if (!cmdLayers || cmdLayers.length == 0) {
+        const isRandomVote = !cmdLayers || cmdLayers.length == 0;
+        if (isRandomVote) {
             const all_layers = sanitizedLayers.filter((l) =>
                 this.options.gamemodeWhitelist.includes(l.gamemode.toUpperCase()) &&
                 ![ this.server.currentLayer ? this.server.currentLayer.map.name : null, ...recentlyPlayedMaps ].includes(l.map.name) &&
@@ -551,8 +558,8 @@ export default class MapVote extends DiscordBasePlugin {
                 )
                 && !(this.options.factionsBlacklist.find((f) => [ getTranslation(l.teams[ 0 ]), getTranslation(l.teams[ 1 ]) ].includes(f)))
             );
-            for (let i = 1; i <= maxOptions; i++) {
-                const needMoreRAAS = !bypassRaasFilter && rnd_layers.filter((l) => l.gamemode === 'RAAS').length < this.options.minRaasEntries;
+            for (let i = 1; i <= optionAmount; i++) {
+                const needMoreRAAS = !bypassRaasFilter && rnd_layers.filter((l) => l.gamemode.toUpperCase() === 'RAAS').length < this.options.minRaasEntries;
                 let l, maxtries = 20;
                 do l = randomElement(needMoreRAAS ? all_layers.filter((l) => l.gamemode.toLowerCase() == "raas") : all_layers); while ((rnd_layers.find(lf => lf.layerid == l.layerid) || rnd_layers.filter(lf => lf.map.name == l.map.name).length > (this.options.allowedSameMapEntries - 1)) && --maxtries >= 0)
                 if (maxtries > 0 && l) {
@@ -570,7 +577,7 @@ export default class MapVote extends DiscordBasePlugin {
                 return;
             }
         } else {
-            if (cmdLayers.length == 1) while (cmdLayers.length < maxOptions) cmdLayers.push(cmdLayers[ 0 ])
+            if (cmdLayers.length == 1) while (cmdLayers.length < optionAmount) cmdLayers.push(cmdLayers[ 0 ])
 
             if (cmdLayers.length <= maxOptions) {
                 let i = 1;
@@ -578,7 +585,7 @@ export default class MapVote extends DiscordBasePlugin {
                     const cls = cl.split('_');
                     const fLayers = sanitizedLayers.filter((l) => (
                         (cls[ 0 ] == "*" || l.layerid.toLowerCase().startsWith(cls[ 0 ]))
-                        && (l.gamemode.toLowerCase().startsWith(cls[ 1 ]) || (!cls[ 1 ] && [ 'RAAS', 'AAS', 'INVASION' ].includes(l.gamemode.toUpperCase())))
+                        && (l.gamemode.toLowerCase().startsWith(cls[ 1 ]) || (!cls[ 1 ] && this.options.gamemodeWhitelist.includes(l.gamemode.toUpperCase())))
                         && (!cls[ 2 ] || l.version.toLowerCase().startsWith("v" + cls[ 2 ].replace(/v/gi, '')))
                         && !(this.options.factionsBlacklist.find((f) => [ getTranslation(l.teams[ 0 ]), getTranslation(l.teams[ 1 ]) ].includes(f)))
                         && (cls[ 3 ] || !(
@@ -603,12 +610,12 @@ export default class MapVote extends DiscordBasePlugin {
             }
         }
 
-        if (this.options.showRerollOption) {
-            if (this.nominations.length > 5) {
-                this.nominations.splice(6, 1);
-                this.tallies.splice(6, 1);
-                this.factionStrings.splice(6, 1);
-            }
+        if (this.options.showRerollOption && (isRandomVote || this.options.showRerollOptionInCustomVotes)) {
+            // if (this.nominations.length > 5) {
+            //     this.nominations.splice(6, 1);
+            //     this.tallies.splice(6, 1);
+            //     this.factionStrings.splice(6, 1);
+            // }
 
             this.newVoteOptions.steamid = steamid;
             this.newVoteOptions.bypassRaasFilter = bypassRaasFilter;

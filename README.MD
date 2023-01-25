@@ -36,6 +36,13 @@ The command name to use in chat.
 ```
 !vote
 ```
+#### entriesAmount
+###### Description
+Amount of entries generated for automatic votes.
+###### Default
+```json
+6
+```
 #### automaticVoteStart
 ###### Description
 A map vote will automatically start after a new match if set to true.
@@ -148,6 +155,13 @@ vote option to restart the vote with random entries.
 ```json
 false
 ```
+#### showRerollOptionInCustomVotes
+###### Description
+Enables/disables the reroll option only in custom votes. showRerollOption must be set to true.
+###### Default
+```json
+false
+```
 #### voteBroadcastMessage
 ###### Description
 Message that is sent as broadcast to announce a vote.
@@ -246,7 +260,8 @@ Array of timeframes that allows to override options based on local time. See exa
     "factionsBlacklist": [ "CAF", "INS" ],
     "minRaasEntries": 2,
     "hideVotesCount": false,
-    "showRerollOption": false,
+    "showRerollOption": true,
+    "showRerollOptionInCustomVotes": false,
     "voteBroadcastMessage": "✯ MAPVOTE ✯\nVote for the next map by writing in chat the corresponding number!",
     "voteWinnerBroadcastMessage": "✯ MAPVOTE ✯\nThe winning layer is\n\n",
     "showWinnerBroadcastMessage": true,

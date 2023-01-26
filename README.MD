@@ -162,6 +162,13 @@ Enables/disables the reroll option only in custom votes. showRerollOption must b
 ```json
 false
 ```
+#### includeMainAssetsInBroadcast
+###### Description
+Shows/Hides Helis and Tanks in the broadcast if they are included in the voting layer.
+###### Default
+```json
+true
+```
 #### voteBroadcastMessage
 ###### Description
 Message that is sent as broadcast to announce a vote.
@@ -262,6 +269,7 @@ Array of timeframes that allows to override options based on local time. See exa
     "hideVotesCount": false,
     "showRerollOption": true,
     "showRerollOptionInCustomVotes": false,
+    "includeMainAssetsInBroadcast": true,
     "voteBroadcastMessage": "✯ MAPVOTE ✯\nVote for the next map by writing in chat the corresponding number!",
     "voteWinnerBroadcastMessage": "✯ MAPVOTE ✯\nThe winning layer is\n\n",
     "showWinnerBroadcastMessage": true,

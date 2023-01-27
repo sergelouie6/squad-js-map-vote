@@ -26,6 +26,11 @@ export default class MapVote extends DiscordBasePlugin {
                 description: "command name to use in chat",
                 default: "!vote"
             },
+            entriesAmount: {
+                required: false,
+                description: "Amount of entries generated for automatic votes",
+                default: 6
+            },
             automaticVoteStart: {
                 required: false,
                 description: "a map vote will automatically start after a new match if set to true",
@@ -110,6 +115,11 @@ export default class MapVote extends DiscordBasePlugin {
                 description: 'vote option to restart the vote with random entries',
                 default: false
             },
+            showRerollOptionInCustomVotes: {
+                required: false,
+                description: 'enables/disables the reroll option only in custom votes. showRerollOption must be set to true',
+                default: false
+            },
             voteBroadcastMessage: {
                 required: false,
                 description: 'Message that is sent as broadcast to announce a vote',
@@ -119,6 +129,11 @@ export default class MapVote extends DiscordBasePlugin {
                 required: false,
                 description: 'Message that is sent as broadcast to announce the winning layer',
                 default: "✯ MAPVOTE ✯\nThe winning layer is\n\n"
+            },
+            showWinnerBroadcastMessage: {
+                required: false,
+                description: 'Enables the broadcast at the end of the voting.',
+                default: true
             },
             allowedSameMapEntries: {
                 required: false,
@@ -145,6 +160,11 @@ export default class MapVote extends DiscordBasePlugin {
                 required: false,
                 description: "Timezone relative to UTC time. 0 for UTC, 2 for CEST (UTC+2), -1 (UTC-1) ",
                 default: 0
+            },
+            includeMainAssetsInBroadcast: {
+                required: false,
+                description: "Shows/Hides Helis and Tanks in the broadcast if they are included in the voting layer",
+                default: true
             },
             timeFrames: {
                 required: false,
@@ -194,9 +214,10 @@ export default class MapVote extends DiscordBasePlugin {
         this.timeframeOptionOverrider = this.timeframeOptionOverrider.bind(this);
         this.savePersistentData = this.savePersistentData.bind(this)
         this.restorePersistentData = this.restorePersistentData.bind(this)
+        this.endVotingGently = this.endVotingGently.bind(this)
 
-        this.broadcast = (msg) => { this.server.rcon.broadcast(msg); };
-        this.warn = (steamid, msg) => { this.server.rcon.warn(steamid, msg); };
+        this.broadcast = async (msg) => { await this.server.rcon.broadcast(msg); };
+        this.warn = async (steamid, msg) => { await this.server.rcon.warn(steamid, msg); };
 
         process.on('uncaughtException', this.savePersistentData);
     }
@@ -207,6 +228,7 @@ export default class MapVote extends DiscordBasePlugin {
         this.server.on('NEW_GAME', this.onNewGame);
         this.server.on('CHAT_MESSAGE', this.onChatMessage);
         this.server.on('PLAYER_DISCONNECTED', this.onPlayerDisconnected);
+        this.server.on('ROUND_ENDED', this.endVotingGently)
         setTimeout(() => {
             this.verbose(1, 'Enabled late listeners.');
             this.server.on('PLAYER_CONNECTED', this.setSeedingMode);
@@ -302,7 +324,7 @@ export default class MapVote extends DiscordBasePlugin {
                         }
                     } else this.verbose(1, "Bad data (currentLayer). Seeding mode for current layer skipped to prevent errors.");
 
-                    if (this.server.nextLayer) {
+                    /*if (this.server.nextLayer) {
                         const nextMaps = seedingMaps.filter((l) => (!this.server.currentLayer || l.layerid != this.server.currentLayer.layerid))
                         let rndMap2;
                         do rndMap2 = randomElement(nextMaps);
@@ -312,7 +334,7 @@ export default class MapVote extends DiscordBasePlugin {
                             const newNextMap = rndMap2.layerid;
                             this.server.rcon.execute(`AdminSetNextLayer ${newNextMap} `);
                         }
-                    } else this.verbose(1, "Bad data (nextLayer). Seeding mode for next layer skipped to prevent errors.");
+                    } else this.verbose(1, "Bad data (nextLayer). Seeding mode for next layer skipped to prevent errors.");*/
 
                 } else this.verbose(1, `Player count doesn't allow seeding mode (${this.server.players.length}/20)`);
             } else this.verbose(1, "Seeding mode disabled in config");
@@ -420,8 +442,8 @@ export default class MapVote extends DiscordBasePlugin {
             case "stopesqjs":
             case "restartsqjs":
                 if (!isAdmin) return;
-                this.warn(steamID, "Saving persistent data.\nTerminating SquadJS process.\nIf managed by a process manager it will automatically restart.")
-                this.savePersistentData();
+                await this.warn(steamID, "Saving persistent data.\nTerminating SquadJS process.\nIf managed by a process manager it will automatically restart.")
+                this.savePersistentData(steamID);
                 process.exit(0);
                 return;
             default:
@@ -519,12 +541,14 @@ export default class MapVote extends DiscordBasePlugin {
         let rnd_layers = [];
 
         const sanitizedLayers = Layers.layers.filter((l) => l.layerid && l.map);
-        const maxOptions = this.options.showRerollOption ? 5 : 6;
+        const maxOptions = this.options.showRerollOption ? 20 : 21;
+        const optionAmount = Math.min(maxOptions, this.options.entriesAmount);
 
         const recentlyPlayedMaps = this.objArrToValArr(this.server.layerHistory.slice(0, this.options.numberRecentMapsToExlude), "layer", "map", "name");
         this.verbose(1, "Recently played maps: " + recentlyPlayedMaps.join(', '));//recentlyPlayedMaps.filter((l) => l && l.map && l.map.name).map((l) => l.map.name).join(', '))
 
-        if (!cmdLayers || cmdLayers.length == 0) {
+        const isRandomVote = !cmdLayers || cmdLayers.length == 0;
+        if (isRandomVote) {
             const all_layers = sanitizedLayers.filter((l) =>
                 this.options.gamemodeWhitelist.includes(l.gamemode.toUpperCase()) &&
                 ![ this.server.currentLayer ? this.server.currentLayer.map.name : null, ...recentlyPlayedMaps ].includes(l.map.name) &&
@@ -538,8 +562,8 @@ export default class MapVote extends DiscordBasePlugin {
                 )
                 && !(this.options.factionsBlacklist.find((f) => [ getTranslation(l.teams[ 0 ]), getTranslation(l.teams[ 1 ]) ].includes(f)))
             );
-            for (let i = 1; i <= maxOptions; i++) {
-                const needMoreRAAS = !bypassRaasFilter && rnd_layers.filter((l) => l.gamemode === 'RAAS').length < this.options.minRaasEntries;
+            for (let i = 1; i <= optionAmount; i++) {
+                const needMoreRAAS = !bypassRaasFilter && rnd_layers.filter((l) => l.gamemode.toUpperCase() === 'RAAS').length < this.options.minRaasEntries;
                 let l, maxtries = 20;
                 do l = randomElement(needMoreRAAS ? all_layers.filter((l) => l.gamemode.toLowerCase() == "raas") : all_layers); while ((rnd_layers.find(lf => lf.layerid == l.layerid) || rnd_layers.filter(lf => lf.map.name == l.map.name).length > (this.options.allowedSameMapEntries - 1)) && --maxtries >= 0)
                 if (maxtries > 0 && l) {
@@ -557,7 +581,7 @@ export default class MapVote extends DiscordBasePlugin {
                 return;
             }
         } else {
-            if (cmdLayers.length == 1) while (cmdLayers.length < maxOptions) cmdLayers.push(cmdLayers[ 0 ])
+            if (cmdLayers.length == 1) while (cmdLayers.length < optionAmount) cmdLayers.push(cmdLayers[ 0 ])
 
             if (cmdLayers.length <= maxOptions) {
                 let i = 1;
@@ -565,9 +589,13 @@ export default class MapVote extends DiscordBasePlugin {
                     const cls = cl.split('_');
                     const fLayers = sanitizedLayers.filter((l) => (
                         (cls[ 0 ] == "*" || l.layerid.toLowerCase().startsWith(cls[ 0 ]))
-                        && (l.gamemode.toLowerCase().startsWith(cls[ 1 ]) || (!cls[ 1 ] && [ 'RAAS', 'AAS', 'INVASION' ].includes(l.gamemode.toUpperCase())))
+                        && (l.gamemode.toLowerCase().startsWith(cls[ 1 ]) || (!cls[ 1 ] && this.options.gamemodeWhitelist.includes(l.gamemode.toUpperCase())))
                         && (!cls[ 2 ] || l.version.toLowerCase().startsWith("v" + cls[ 2 ].replace(/v/gi, '')))
                         && !(this.options.factionsBlacklist.find((f) => [ getTranslation(l.teams[ 0 ]), getTranslation(l.teams[ 1 ]) ].includes(f)))
+                        && (cls[ 3 ] || !(
+                            this.options.layerLevelBlacklist.find((fl) => this.getLayersFromStringId(fl).map((e) => e.layerid).includes(l.layerid))
+                            || this.options.factionsBlacklist.find((f) => [ getTranslation(l.teams[ 0 ]), getTranslation(l.teams[ 1 ]) ].includes(f))
+                        ))
                     ));
                     let l, maxtries = 10;
                     do l = randomElement(fLayers); while ((rnd_layers.filter(lf => lf.map.name == l.map.name).length > (this.options.allowedSameMapEntries - 1)) && --maxtries >= 0)
@@ -586,12 +614,12 @@ export default class MapVote extends DiscordBasePlugin {
             }
         }
 
-        if (this.options.showRerollOption) {
-            if (this.nominations.length > 5) {
-                this.nominations.splice(6, 1);
-                this.tallies.splice(6, 1);
-                this.factionStrings.splice(6, 1);
-            }
+        if (this.options.showRerollOption && (isRandomVote || this.options.showRerollOptionInCustomVotes)) {
+            // if (this.nominations.length > 5) {
+            //     this.nominations.splice(6, 1);
+            //     this.tallies.splice(6, 1);
+            //     this.factionStrings.splice(6, 1);
+            // }
 
             this.newVoteOptions.steamid = steamid;
             this.newVoteOptions.bypassRaasFilter = bypassRaasFilter;
@@ -646,9 +674,55 @@ export default class MapVote extends DiscordBasePlugin {
         this.broadcastIntervalTask = setInterval(this.broadcastNominations, toMils(this.options.voteBroadcastInterval));
     }
 
-    endVotingGently() {
+    async endVotingGently() {
         this.endVoting();
-        this.broadcast(this.options.voteWinnerBroadcastMessage + this.formatFancyLayer(Layers.layers.find((l) => l.layerid == this.updateNextMap())));
+        const winnerLayer = Layers.layers.find((l) => l.layerid == this.updateNextMap());
+        const fancyWinner = this.formatFancyLayer(winnerLayer);
+        if (this.showWinnerBroadcastMessage) await this.broadcast(this.options.voteWinnerBroadcastMessage + fancyWinner);
+
+        if (!this.options.logToDiscord) return
+        return await this.sendDiscordMessage({
+            embed: {
+                title: `Vote winner: ${fancyWinner}`,
+                color: 16761867,
+                fields: [
+                    {
+                        name: 'Map',
+                        value: winnerLayer.map.name,
+                        inline: true
+                    },
+                    {
+                        name: 'Gamemode',
+                        value: winnerLayer.gamemode,
+                        inline: true
+                    },
+                    {
+                        name: 'Version',
+                        value: winnerLayer.version,
+                        inline: true
+                    },
+                    {
+                        name: 'LayerID',
+                        value: winnerLayer.layerid,
+                        inline: false
+                    },
+                    {
+                        name: 'Team 1',
+                        value: winnerLayer.teams[ 0 ].faction,
+                        inline: true
+                    },
+                    {
+                        name: 'Team 2',
+                        value: winnerLayer.teams[ 1 ].faction,
+                        inline: true
+                    },
+                ],
+                image: {
+                    url: `https://squad-data.nyc3.cdn.digitaloceanspaces.com/main/${winnerLayer.layerid}.jpg`
+                },
+            },
+            timestamp: (new Date()).toISOString()
+        });
     }
 
     endVoting() {
@@ -677,11 +751,24 @@ export default class MapVote extends DiscordBasePlugin {
         if (this.nominations.length > 0 && this.votingEnabled) {
             await this.broadcast(this.options.voteBroadcastMessage);
             let nominationStrings = [];
+
             for (let choice = 1; choice < this.nominations.length; choice++) {
                 choice = Number(choice);
                 let vLayer = Layers.layers.find(e => e.layerid == this.nominations[ choice ]);
-                nominationStrings.push(formatChoice(choice, vLayer.map.name + ' ' + vLayer.gamemode + ' ' + this.factionStrings[ choice ], this.tallies[ choice ], (this.options.hideVotesCount || this.firstBroadcast)));
+                // const allVecs = vLayer.teams[0].vehicles.concat(vLayer.teams[1].vehicles);
+                const helis = vLayer.teams[ 0 ].numberOfHelicopters + vLayer.teams[ 1 ].numberOfHelicopters
+                const tanks = vLayer.teams[ 0 ].numberOfTanks + vLayer.teams[ 1 ].numberOfTanks
+                let assets = [];
+                if (helis > 0) assets.push('Helis');
+                if (tanks > 0) assets.push('Tanks');
+                const vehiclesString = this.options.includeMainAssetsInBroadcast ? ' ' + assets.join('-') : '';
+                nominationStrings.push(formatChoice(choice, vLayer.map.name + ' ' + vLayer.gamemode + ' ' + this.factionStrings[ choice ] + vehiclesString, this.tallies[ choice ], (this.options.hideVotesCount || this.firstBroadcast)));
+                if (nominationStrings.length == 3) {
+                    await this.broadcast(nominationStrings.join("\n"));
+                    nominationStrings = [];
+                }
             }
+
             if (this.nominations[ 0 ]) nominationStrings.push(formatChoice(0, this.nominations[ 0 ], this.tallies[ 0 ], (this.options.hideVotesCount || this.firstBroadcast)))
             await this.broadcast(nominationStrings.join("\n"));
 
@@ -730,8 +817,17 @@ export default class MapVote extends DiscordBasePlugin {
         let strMsg = "";
         for (let choice in this.nominations) {
             choice = Number(choice);
+
+            let vLayer = Layers.layers.find(e => e.layerid == this.nominations[ choice ]);
+            // const allVecs = vLayer.teams[0].vehicles.concat(vLayer.teams[1].vehicles);
+            // const helis = vLayer?.teams[ 0 ].numberOfHelicopters || 0 + vLayer?.teams[ 1 ].numberOfHelicopters || 0
+            // const tanks = vLayer?.teams[ 0 ].numberOfTanks || 0 + vLayer?.teams[ 1 ].numberOfTanks || 0
+            // let assets = [];
+            // if (helis > 0) assets.push('Helis');
+            // if (tanks > 0) assets.push('Tanks');
+            // const vehiclesString = ' ' + assets.join('-');
             // await this.msgDirect(steamID, formatChoice(choice, this.nominations[ choice ], this.tallies[ choice ]));
-            strMsg += (steamID, formatChoice(choice, this.nominations[ choice ], this.tallies[ choice ])) + "\n";
+            strMsg += (steamID, formatChoice(choice, this.nominations[ choice ], this.tallies[ choice ])) + `H:${helis}-T:${tanks}` + "\n";
         }
         strMsg.trim();
         if (steamID) this.warn(steamID, strMsg)
@@ -763,7 +859,7 @@ export default class MapVote extends DiscordBasePlugin {
 
     async logVoteToDiscord(message) {
         if (!this.options.logToDiscord) return
-        await this.sendDiscordMessage({
+        return await this.sendDiscordMessage({
             embed: {
                 title: 'Vote Started',
                 color: 16761867,
@@ -806,6 +902,12 @@ export default class MapVote extends DiscordBasePlugin {
             this.verbose(1, "Error restoring persistent data", e)
             return
         }
+        if (bkData.manualRestartSender && bkData.manualRestartSender != "") {
+            (async () => {
+                await this.warn(bkData.manualRestartSender, `SquadJS has completed the restart.\nPersistent data restored.`)
+                this.verbose(1, `Restart confirmation sent to SteamID: "${bkData.manualRestartSender}"`)
+            })()
+        }
 
         for (let k in bkData.server) this.server[ k ] = bkData.server[ k ];
 
@@ -824,9 +926,8 @@ export default class MapVote extends DiscordBasePlugin {
     }
 
 
-    savePersistentData() {
+    savePersistentData(steamID = null) {
         if (this.options.persistentDataFile == "") return;
-
 
         const saveDt = {
             custom: {
@@ -843,6 +944,7 @@ export default class MapVote extends DiscordBasePlugin {
                 factionStrings: this.factionStrings,
                 firstBroadcast: this.firstBroadcast
             },
+            manualRestartSender: steamID,
             saveDateTime: new Date()
         }
         // this.verbose(1, `Saving persistent data to: ${this.options.persistentDataFile}\n`, saveDt.server.layerHistory)
@@ -876,9 +978,9 @@ export default class MapVote extends DiscordBasePlugin {
     async updateLayerList() {
         // Layers.layers = [];
 
-        this.verbose(1, 'Pulling [All For One] layer list...');
+        this.verbose(1, 'Pulling updated layer list...');
         const response = await axios.get(
-            'http://hub.afocommunity.com/api/layers.json', [ 0 ]
+            'https://raw.githubusercontent.com/Squad-Wiki/squad-wiki-pipeline-map-data/master/completed_output/_Current%20Version/finished.json'
         );
 
         for (const layer of response.data.Maps) {

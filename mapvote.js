@@ -372,7 +372,7 @@ export default class MapVote extends DiscordBasePlugin {
                     await this.warn(steamID, "There is no vote running right now");
                     return;
                 }
-                this.directMsgNominations(steamID);
+                await this.directMsgNominations(steamID);
                 return;
             case "start": //starts the vote again if it was canceled
                 if (!isAdmin) return;
@@ -405,8 +405,7 @@ export default class MapVote extends DiscordBasePlugin {
                     await this.warn(steamID, "There is no vote running right now");
                     return;
                 }
-                this.endVotingGently();
-                await this.warn(steamID, "Ending current vote");
+                this.endVotingGently(steamID);
                 return;
             case "cancelauto": //cancels the current vote and wont set next map to current winnner
                 if (!isAdmin) return;
@@ -670,55 +669,64 @@ export default class MapVote extends DiscordBasePlugin {
         this.broadcastIntervalTask = setInterval(this.broadcastNominations, toMils(this.options.voteBroadcastInterval));
     }
 
-    async endVotingGently() {
+    async endVotingGently(steamID = null) {
         this.endVoting();
+        
+        if (steamID) await this.warn(steamID, "Voting terminated!");
+
         const winnerLayer = Layers.layers.find((l) => l.layerid == this.updateNextMap());
         const fancyWinner = this.formatFancyLayer(winnerLayer);
-        if (this.showWinnerBroadcastMessage) await this.broadcast(this.options.voteWinnerBroadcastMessage + fancyWinner);
 
-        if (!this.options.logToDiscord) return
-        return await this.sendDiscordMessage({
-            embed: {
-                title: `Vote winner: ${fancyWinner}`,
-                color: 16761867,
-                fields: [
-                    {
-                        name: 'Map',
-                        value: winnerLayer.map.name,
-                        inline: true
+        console.log("winning layer", winnerLayer, fancyWinner)
+
+        if (this.showWinnerBroadcastMessage) this.broadcast(this.options.voteWinnerBroadcastMessage + fancyWinner);
+
+        if (this.options.logToDiscord) {
+            await this.sendDiscordMessage({
+                embed: {
+                    title: `Vote winner: ${fancyWinner}`,
+                    color: 16761867,
+                    fields: [
+                        {
+                            name: 'Map',
+                            value: winnerLayer.map.name,
+                            inline: true
+                        },
+                        {
+                            name: 'Gamemode',
+                            value: winnerLayer.gamemode,
+                            inline: true
+                        },
+                        {
+                            name: 'Version',
+                            value: winnerLayer.version,
+                            inline: true
+                        },
+                        {
+                            name: 'LayerID',
+                            value: winnerLayer.layerid,
+                            inline: false
+                        },
+                        {
+                            name: 'Team 1',
+                            value: winnerLayer.teams[ 0 ].faction,
+                            inline: true
+                        },
+                        {
+                            name: 'Team 2',
+                            value: winnerLayer.teams[ 1 ].faction,
+                            inline: true
+                        },
+                    ],
+                    image: {
+                        url: `https://squad-data.nyc3.cdn.digitaloceanspaces.com/main/${winnerLayer.layerid}.jpg`
                     },
-                    {
-                        name: 'Gamemode',
-                        value: winnerLayer.gamemode,
-                        inline: true
-                    },
-                    {
-                        name: 'Version',
-                        value: winnerLayer.version,
-                        inline: true
-                    },
-                    {
-                        name: 'LayerID',
-                        value: winnerLayer.layerid,
-                        inline: false
-                    },
-                    {
-                        name: 'Team 1',
-                        value: winnerLayer.teams[ 0 ].faction,
-                        inline: true
-                    },
-                    {
-                        name: 'Team 2',
-                        value: winnerLayer.teams[ 1 ].faction,
-                        inline: true
-                    },
-                ],
-                image: {
-                    url: `https://squad-data.nyc3.cdn.digitaloceanspaces.com/main/${winnerLayer.layerid}.jpg`
                 },
-            },
-            timestamp: (new Date()).toISOString()
-        });
+                timestamp: (new Date()).toISOString()
+            });
+        }
+
+        return true;
     }
 
     endVoting() {
@@ -823,7 +831,7 @@ export default class MapVote extends DiscordBasePlugin {
             // if (tanks > 0) assets.push('Tanks');
             // const vehiclesString = ' ' + assets.join('-');
             // await this.msgDirect(steamID, formatChoice(choice, this.nominations[ choice ], this.tallies[ choice ]));
-            strMsg += (steamID, formatChoice(choice, this.nominations[ choice ], this.tallies[ choice ])) + `H:${helis}-T:${tanks}` + "\n";
+            strMsg += (steamID, formatChoice(choice, this.nominations[ choice ], this.tallies[ choice ])) + "\n";
         }
         strMsg.trim();
         if (steamID) this.warn(steamID, strMsg)

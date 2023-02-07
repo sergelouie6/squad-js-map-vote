@@ -588,8 +588,8 @@ export default class MapVote extends DiscordBasePlugin {
                         (cls[ 0 ] == "*" || l.layerid.toLowerCase().startsWith(cls[ 0 ]))
                         && (l.gamemode.toLowerCase().startsWith(cls[ 1 ]) || (!cls[ 1 ] && this.options.gamemodeWhitelist.includes(l.gamemode.toUpperCase())))
                         && (!cls[ 2 ] || l.version.toLowerCase().startsWith("v" + cls[ 2 ].replace(/v/gi, '')))
-                        && !(this.options.factionsBlacklist.find((f) => [ getTranslation(l.teams[ 0 ]), getTranslation(l.teams[ 1 ]) ].includes(f)))
-                        && (!cls[ 3 ] || !(
+                        // && !(this.options.factionsBlacklist.find((f) => [ getTranslation(l.teams[ 0 ]), getTranslation(l.teams[ 1 ]) ].includes(f)))
+                        && (cls[ 2 ] || !(
                             this.options.layerLevelBlacklist.find((fl) => this.getLayersFromStringId(fl).map((e) => e.layerid).includes(l.layerid))
                             || this.options.factionsBlacklist.find((f) => [ getTranslation(l.teams[ 0 ]), getTranslation(l.teams[ 1 ]) ].includes(f))
                         ))

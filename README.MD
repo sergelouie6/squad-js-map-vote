@@ -183,6 +183,13 @@ Enables the broadcast at the end of the voting.
 ```json
 true
 ```
+#### includeMainAssetsInBroadcast
+###### Description
+Shows/Hides Helis and Tanks in the broadcast if they are included in the voting layer.
+###### Default
+```json
+true
+```
 #### allowedSameMapEntries
 ###### Description
 Allowed max NUMBER of times a map could appear in the vote list.
@@ -265,6 +272,7 @@ Array of timeframes that allows to override options based on local time. See exa
     "voteBroadcastMessage": "✯ MAPVOTE ✯\nVote for the next map by writing in chat the corresponding number!",
     "voteWinnerBroadcastMessage": "✯ MAPVOTE ✯\nThe winning layer is\n\n",
     "showWinnerBroadcastMessage": true,
+    "includeMainAssetsInBroadcast" true,
     "allowedSameMapEntries": 1,
     "logToDiscord": true,
     "channelID": "112233445566778899",

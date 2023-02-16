@@ -246,6 +246,15 @@ Array of timeframes that allows to override options based on local time. See exa
     }
 }
 ```
+#### minimumVotesToAcceptResult
+###### Description
+Minimum votes per map to accept result. 
+
+Can be used to prevent situation when insignificant number of players decide what map should be next, but most still wants to play map according to rotation.
+###### Default
+```json
+1
+```
 ### Example configuration
 ```json
 {
@@ -278,6 +287,7 @@ Array of timeframes that allows to override options based on local time. See exa
     "channelID": "112233445566778899",
     "persistentDataFile": "",
     "timezone": 2,
+    "minimumVotesToAcceptResult": 1,
     "timeFrames": [
         {
             "name": "follow layer rotation list",

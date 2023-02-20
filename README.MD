@@ -281,7 +281,7 @@ Can be used to prevent situation when insignificant number of players decide wha
     "voteBroadcastMessage": "✯ MAPVOTE ✯\nVote for the next map by writing in chat the corresponding number!",
     "voteWinnerBroadcastMessage": "✯ MAPVOTE ✯\nThe winning layer is\n\n",
     "showWinnerBroadcastMessage": true,
-    "includeMainAssetsInBroadcast" true,
+    "includeMainAssetsInBroadcast": true,
     "allowedSameMapEntries": 1,
     "logToDiscord": true,
     "channelID": "112233445566778899",

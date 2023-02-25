@@ -202,6 +202,7 @@ export default class MapVote extends DiscordBasePlugin {
         this.or_options = { ...this.options };
         this.autovotestart = null;
         this.lastMapUpdate = new Date();
+        this.endVotingTimeout = null;
         this.timeout_ps = []
 
         this.onNewGame = this.onNewGame.bind(this);
@@ -252,7 +253,8 @@ export default class MapVote extends DiscordBasePlugin {
 
     async onNewGame() {
         for (let x of this.timeout_ps) clearTimeout(this.timeout_ps.pop())
-        setTimeout(async () => {
+
+        this.endVotingTimeout = setTimeout(async () => {
             this.endVoting();
             this.trackedVotes = {};
             this.tallies = [];
@@ -743,6 +745,7 @@ export default class MapVote extends DiscordBasePlugin {
         this.votingEnabled = false;
         clearInterval(this.broadcastIntervalTask);
         clearTimeout(this.newVoteTimeout);
+        clearTimeout(this.endVotingTimeout);
         this.newVoteTimeout = null;
         this.broadcastIntervalTask = null;
     }

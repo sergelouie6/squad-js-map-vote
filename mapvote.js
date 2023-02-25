@@ -321,17 +321,19 @@ export default class MapVote extends DiscordBasePlugin {
                         }
                     } else this.verbose(1, "Bad data (currentLayer). Seeding mode for current layer skipped to prevent errors.");
 
-                    /*if (this.server.nextLayer) {
-                        const nextMaps = seedingMaps.filter((l) => (!this.server.currentLayer || l.layerid != this.server.currentLayer.layerid))
-                        let rndMap2;
-                        do rndMap2 = randomElement(nextMaps);
-                        while (rndMap2.layerid == rndMap.layerid)
+                    if (+this.layerHistory[ 0 ].time - +(new Date()) > 30 * 1000) {
+                        if (this.server.nextLayer) {
+                            const nextMaps = seedingMaps.filter((l) => (!this.server.currentLayer || l.layerid != this.server.currentLayer.layerid))
+                            let rndMap2;
+                            do rndMap2 = randomElement(nextMaps);
+                            while (rndMap2.layerid == rndMap.layerid)
 
-                        if (isNewGameEvent && this.server.players.length < 20 && this.server.nextLayer.gamemode.toLowerCase() != "seed") {
-                            const newNextMap = rndMap2.layerid;
-                            this.server.rcon.execute(`AdminSetNextLayer ${newNextMap} `);
-                        }
-                    } else this.verbose(1, "Bad data (nextLayer). Seeding mode for next layer skipped to prevent errors.");*/
+                            if (this.server.players.length < 20 && this.server.nextLayer.gamemode.toLowerCase() != "seed") {
+                                const newNextMap = rndMap2.layerid;
+                                this.server.rcon.execute(`AdminSetNextLayer ${newNextMap} `);
+                            }
+                        } else this.verbose(1, "Bad data (nextLayer). Seeding mode for next layer skipped to prevent errors.");
+                    }
 
                 } else this.verbose(1, `Player count doesn't allow seeding mode (${this.server.players.length}/20)`);
             } else this.verbose(1, "Seeding mode disabled in config");
@@ -625,8 +627,10 @@ export default class MapVote extends DiscordBasePlugin {
             this.nominations[ 0 ] = "Reroll vote list with random options"
             this.tallies[ 0 ] = 0;
             this.factionStrings[ 0 ] = "";
-
         }
+
+        if (this.nominations[ 1 ] != "")
+            this.server.rcon.execute(`AdminSetNextLayer ${this.nominations[ 1 ]} `);
 
         function getTranslation(layer) {
             if (translations[ layer.faction ]) return translations[ layer.faction ]
@@ -998,7 +1002,7 @@ export default class MapVote extends DiscordBasePlugin {
 
         this.verbose(1, 'Layer list updated');
     }
-    
+
 
     formatChoice(choiceIndex, mapString, currentVotes, hideVoteCount) {
         return `${choiceIndex}➤ ${mapString} ` + (!hideVoteCount ? `(${currentVotes})` : "");

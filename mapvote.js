@@ -743,11 +743,9 @@ export default class MapVote extends DiscordBasePlugin {
 
     endVoting() {
         this.votingEnabled = false;
-        clearInterval(this.broadcastIntervalTask);
-        clearTimeout(this.newVoteTimeout);
-        clearTimeout(this.endVotingTimeout);
-        this.newVoteTimeout = null;
-        this.broadcastIntervalTask = null;
+        this.broadcastIntervalTask = clearInterval(this.broadcastIntervalTask);
+        this.newVoteTimeout = clearTimeout(this.newVoteTimeout);
+        this.endVotingTimeout = clearTimeout(this.endVotingTimeout);
     }
     objArrToValArr(arr, ...key) {
         let vet = [];

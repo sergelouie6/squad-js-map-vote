@@ -217,6 +217,7 @@ export default class MapVote extends DiscordBasePlugin {
         this.restorePersistentData = this.restorePersistentData.bind(this);
         this.endVotingGently = this.endVotingGently.bind(this);
         this.formatChoice = this.formatChoice.bind(this);
+        this.updateNextMap = this.updateNextMap.bind(this);
 
         this.broadcast = async (msg) => { await this.server.rcon.broadcast(msg); };
         this.warn = async (steamid, msg) => { await this.server.rcon.warn(steamid, msg); };
@@ -686,12 +687,15 @@ export default class MapVote extends DiscordBasePlugin {
 
         if (steamID) await this.warn(steamID, "Voting terminated!");
 
-        const winnerLayer = Layers.layers.find((l) => l.layerid == this.updateNextMap());
+        const winningLayerId = this.updateNextMap();
+        if (!winningLayerId) return;
+
+        const winnerLayer = Layers.layers.find((l) => l.layerid == winningLayerId);
         const fancyWinner = this.formatFancyLayer(winnerLayer);
 
-        console.log("winning layer", winnerLayer, fancyWinner)
+        // this.verbose(1, "Winning layer", winnerLayer, fancyWinner)
 
-        if (this.showWinnerBroadcastMessage) this.broadcast(this.options.voteWinnerBroadcastMessage + fancyWinner);
+        if (this.options.showWinnerBroadcastMessage) this.broadcast(this.options.voteWinnerBroadcastMessage + fancyWinner);
 
         if (this.options.logToDiscord) {
             await this.sendDiscordMessage({

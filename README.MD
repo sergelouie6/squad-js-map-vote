@@ -36,6 +36,13 @@ The command name to use in chat.
 ```
 !vote
 ```
+#### entryFormat
+###### Description
+The format of an entry in the voting list.
+###### Default
+```json
+"{map_name} {gamemode} {map_version} {factions} ({main_assets})"
+```
 #### entriesAmount
 ###### Description
 Amount of entries generated for automatic votes.
@@ -183,13 +190,6 @@ Enables the broadcast at the end of the voting.
 ```json
 true
 ```
-#### includeMainAssetsInBroadcast
-###### Description
-Shows/Hides Helis and Tanks in the broadcast if they are included in the voting layer.
-###### Default
-```json
-true
-```
 #### allowedSameMapEntries
 ###### Description
 Allowed max NUMBER of times a map could appear in the vote list.
@@ -262,6 +262,7 @@ Can be used to prevent situation when insignificant number of players decide wha
     "enabled": true,
     "discordClient": "discord",
     "entriesAmount": 6,
+    "entryFormat": "{map_name} {gamemode} {map_version} {factions} ({main_assets})",
     "automaticVoteStart": true,
     "votingDuration": 0,
     "minPlayersForVote": 30,
@@ -281,7 +282,6 @@ Can be used to prevent situation when insignificant number of players decide wha
     "voteBroadcastMessage": "✯ MAPVOTE ✯\nVote for the next map by writing in chat the corresponding number!",
     "voteWinnerBroadcastMessage": "✯ MAPVOTE ✯\nThe winning layer is\n\n",
     "showWinnerBroadcastMessage": true,
-    "includeMainAssetsInBroadcast": true,
     "allowedSameMapEntries": 1,
     "logToDiscord": true,
     "channelID": "112233445566778899",

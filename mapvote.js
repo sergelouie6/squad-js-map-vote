@@ -26,6 +26,11 @@ export default class MapVote extends DiscordBasePlugin {
                 description: "command name to use in chat",
                 default: "!vote"
             },
+            entryFormat: {
+                required: false,
+                description: "The format of an entry in the voting list",
+                default: '{map_name} {gamemode} {map_version} {factions} ({main_assets})'
+            },
             entriesAmount: {
                 required: false,
                 description: "Amount of entries generated for automatic votes",
@@ -161,20 +166,15 @@ export default class MapVote extends DiscordBasePlugin {
                 description: "Timezone relative to UTC time. 0 for UTC, 2 for CEST (UTC+2), -1 (UTC-1) ",
                 default: 0
             },
-            includeMainAssetsInBroadcast: {
+            minimumVotesToAcceptResult: {
                 required: false,
-                description: "Shows/Hides Helis and Tanks in the broadcast if they are included in the voting layer",
-                default: true
+                description: "Minimum votes per map to accept result.",
+                default: 1
             },
             timeFrames: {
                 required: false,
                 description: 'Array of timeframes to override options',
                 default: []
-            },
-            minimumVotesToAcceptResult: {
-                required: false,
-                description: "Minimum votes per map to accept result.",
-                default: 1
             }
         };
     }
@@ -327,7 +327,7 @@ export default class MapVote extends DiscordBasePlugin {
                         }
                     } else this.verbose(1, "Bad data (currentLayer). Seeding mode for current layer skipped to prevent errors.");
 
-                    if (+this.layerHistory[ 0 ].time - +(new Date()) > 30 * 1000) {
+                    if (+(new Date()) - +this.layerHistory[ 0 ].time > 30 * 1000) {
                         if (this.server.nextLayer) {
                             const nextMaps = seedingMaps.filter((l) => (!this.server.currentLayer || l.layerid != this.server.currentLayer.layerid))
                             let rndMap2;
@@ -771,15 +771,8 @@ export default class MapVote extends DiscordBasePlugin {
             for (let choice = 1; choice < this.nominations.length; choice++) {
                 choice = Number(choice);
                 let vLayer = Layers.layers.find(e => e.layerid == this.nominations[ choice ]);
-                // const allVecs = vLayer.teams[0].vehicles.concat(vLayer.teams[1].vehicles);
-                const helis = vLayer.teams[ 0 ].numberOfHelicopters + vLayer.teams[ 1 ].numberOfHelicopters
-                const tanks = vLayer.teams[ 0 ].numberOfTanks + vLayer.teams[ 1 ].numberOfTanks
-                let assets = [];
-                if (helis > 0) assets.push('Helis');
-                if (tanks > 0) assets.push('Tanks');
-                const vehiclesString = this.options.includeMainAssetsInBroadcast ? ' ' + assets.join('-') : '';
 
-                const formattedChoide = this.formatChoice(choice, vLayer.map.name + ' ' + vLayer.gamemode + ' ' + this.factionStrings[ choice ] + vehiclesString, this.tallies[ choice ], (this.options.hideVotesCount || this.firstBroadcast))
+                const formattedChoide = this.formatChoice(choice, this.formatFancyLayer(vLayer), this.tallies[ choice ], (this.options.hideVotesCount || this.firstBroadcast))
                 nominationStrings.push(formattedChoide);
                 allNominationStrings.push(formattedChoide);
 
@@ -813,7 +806,19 @@ export default class MapVote extends DiscordBasePlugin {
         }
         const factionString = getTranslation(layer.teams[ 0 ]) + "-" + getTranslation(layer.teams[ 1 ]);
 
-        return layer.map.name + ' ' + layer.gamemode + ' ' + factionString
+        const helis = layer.teams[ 0 ].numberOfHelicopters + layer.teams[ 1 ].numberOfHelicopters
+        const tanks = layer.teams[ 0 ].numberOfTanks + layer.teams[ 1 ].numberOfTanks
+        let assets = [];
+        if (helis > 0) assets.push('Helis');
+        if (tanks > 0) assets.push('Tanks');
+        const vehiclesString = assets.join('-');
+
+        return this.options.entryFormat
+            .replace(/\{map_name\}/i, layer.map.name)
+            .replace(/\{gamemode\}/i, layer.gamemode)
+            .replace(/\{map_version\}/i, layer.version)
+            .replace(/\{factions\}/i, factionString)
+            .replace(/\{main_assets\}/i, vehiclesString)
 
         function getTranslation(t) {
             if (translations[ t.faction ]) return translations[ t.faction ]

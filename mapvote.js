@@ -29,7 +29,7 @@ export default class MapVote extends DiscordBasePlugin {
             entryFormat: {
                 required: false,
                 description: "The format of an entry in the voting list",
-                default: '{map_name} {gamemode} {map_version} {factions} ({main_assets})'
+                default: '{map_name} {gamemode} {map_version} {factions} {main_assets}'
             },
             entriesAmount: {
                 required: false,

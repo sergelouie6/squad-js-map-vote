@@ -41,7 +41,7 @@ The command name to use in chat.
 The format of an entry in the voting list.
 ###### Default
 ```json
-"{map_name} {gamemode} {map_version} {factions} ({main_assets})"
+"{map_name} {gamemode} {map_version} {factions} {main_assets}"
 ```
 #### entriesAmount
 ###### Description
@@ -262,7 +262,7 @@ Can be used to prevent situation when insignificant number of players decide wha
     "enabled": true,
     "discordClient": "discord",
     "entriesAmount": 6,
-    "entryFormat": "{map_name} {gamemode} {map_version} {factions} ({main_assets})",
+    "entryFormat": "{map_name} {gamemode} {map_version} {factions} {main_assets}",
     "automaticVoteStart": true,
     "votingDuration": 0,
     "minPlayersForVote": 30,

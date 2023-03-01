@@ -683,6 +683,8 @@ export default class MapVote extends DiscordBasePlugin {
     }
 
     async endVotingGently(steamID = null) {
+        if (!this.votingEnabled) return;
+        
         this.endVoting();
 
         if (steamID) await this.warn(steamID, "Voting terminated!");

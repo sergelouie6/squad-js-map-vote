@@ -436,6 +436,10 @@ export default class MapVote extends DiscordBasePlugin {
                 }
                 this.broadcastNominations();
                 return;
+            case "endmatch":
+                if (!isAdmin) return;
+                this.server.rcon.execute(`AdminEndMatch`)
+                return;
             case "help": //displays available commands
                 let msg = "";
                 msg += (`!vote\n > choices\n > results\n`);
@@ -684,7 +688,7 @@ export default class MapVote extends DiscordBasePlugin {
 
     async endVotingGently(steamID = null) {
         if (!this.votingEnabled) return;
-        
+
         this.endVoting();
 
         if (steamID) await this.warn(steamID, "Voting terminated!");

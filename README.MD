@@ -22,6 +22,11 @@ The `MapVote` plugin for squad js based on the original version https://github.c
 - `!vote start *_aas` - Starts a vote with 6 layers, all AAS
 - `!vote start *_inv` - Starts a vote with 6 layers, all INV
 
+##### Vote by faction
+- `!vote start f:rus` - Starts a vote with 6 layers, all with RUS faction
+- `!vote start f:aus` - Starts a vote with 6 layers, all with AUS faction
+- `!vote start f:mea f:caf f:usa` - Starts a vote with 3 layers, 1 with MEA faction, 1 with CAF faction and 1 with USA faction
+
 ##### Vote by map
 - `!vote start yeh gor lash gor albas` - Starts a vote with X maps, random modes
 

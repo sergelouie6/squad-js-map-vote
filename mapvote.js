@@ -819,11 +819,13 @@ export default class MapVote extends DiscordBasePlugin {
             'United States Marine Corps': "USMC",
             'Russian Ground Forces': "RUS",
             'British Army': "GB",
+            'British Armed Forces': "GB",
             'Canadian Army': "CAF",
             'Australian Defence Force': "AUS",
-            'Irregular Militia Forces': "IRR",
+            'Irregular Militia Forces': "MIL",
             'Middle Eastern Alliance': "MEA",
             'Insurgent Forces': "INS",
+            'Unknown': "Unk"
         }
         const factionString = getTranslation(layer.teams[ 0 ]) + "-" + getTranslation(layer.teams[ 1 ]);
 

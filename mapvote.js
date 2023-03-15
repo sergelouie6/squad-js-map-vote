@@ -1042,8 +1042,9 @@ export default class MapVote extends DiscordBasePlugin {
 
         const rconLayers = (await this.server.rcon.execute('ListLayers'))?.split('\n') || [];
         rconLayers.shift();
+        console.log(rconLayers);
         if (rconLayers.length > 0) Layers.layers = Layers.layers.filter((l) => l != null && rconLayers.includes(l.layerid))
-        // this.verbose(1, 'RCON Layers', this.mapLayer(rconLayers[ 0 ]))
+        this.verbose(1, 'RCON Layers', rconLayers.length, this.mapLayer(rconLayers[ 0 ]))
         if (sheetCsv.length > 0) {
             for (const layer of rconLayers) {
                 if (!Layers.layers.find((e) => e?.layerid == layer)) {

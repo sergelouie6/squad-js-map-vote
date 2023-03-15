@@ -1035,21 +1035,21 @@ export default class MapVote extends DiscordBasePlugin {
             if (!Layers.layers.find((e) => e.layerid == layer.rawName)) Layers.layers.push(new Layer(layer));
         }
 
-        const sheetCsv = (await axios.get('https://docs.google.com/spreadsheets/d/1OYO1IvNI0wrUZWKz_pz6Ka1xFAvBjBupddYn2E4fNFg/gviz/tq?tqx=out:csv&sheet=Map%20Layers')).data?.replace(/\"/g, '')?.split('\n')//.map((l) => l.split(','))
+        const sheetCsv = (await axios.get('https://docs.google.com/spreadsheets/d/1OYO1IvNI0wrUZWKz_pz6Ka1xFAvBjBupddYn2E4fNFg/gviz/tq?tqx=out:csv&sheet=Map%20Layers')).data?.replace(/\"/g, '')?.split('\n') || []//.map((l) => l.split(','))
         sheetCsv.shift();
         // this.verbose(1, 'Sheet', Layers.layers.length, sheetCsv.length, sheetCsv.find(l => l[ 2 ] == "Manicouagan_RAAS_v1"))
         // this.verbose(1, 'Sheet', sheetCsv)
 
-        const rconLayers = (await this.server.rcon.execute('ListLayers')).split('\n');
+        const rconLayers = (await this.server.rcon.execute('ListLayers'))?.split('\n') || [];
         rconLayers.shift();
-        Layers.layers = Layers.layers.filter((l) => rconLayers.includes(l.layerid))
+        if (rconLayers.length > 0) Layers.layers = Layers.layers.filter((l) => l != null && rconLayers.includes(l.layerid))
         // this.verbose(1, 'RCON Layers', this.mapLayer(rconLayers[ 0 ]))
         if (sheetCsv.length > 0) {
             for (const layer of rconLayers) {
-                if (!Layers.layers.find((e) => e.layerid == layer)) {
+                if (!Layers.layers.find((e) => e?.layerid == layer)) {
                     let newLayer = this.mapLayer(layer);
 
-                    const csvLayer = sheetCsv.find(l => l.includes(newLayer.layerid))?.split(',');
+                    const csvLayer = sheetCsv.find(l => l.includes(newLayer?.layerid))?.split(',');
                     // console.log(newLayer.layerid, csvLayer[ 2 ]);
                     if (csvLayer) {
                         if (csvLayer[ 6 ]) newLayer.teams[ 0 ].faction = csvLayer[ 6 ]
@@ -1082,7 +1082,7 @@ export default class MapVote extends DiscordBasePlugin {
         // this.verbose(1, 'Parsing layer', l)
         const gl = /^(?<level>\w+)_(?<gamemode>\w+)_(?<version>\w+)$/i.exec(l)?.groups
         // this.verbose(1, 'Parsed layer', gl)
-        if (Object.keys(gl).length != 3) return;
+        if (!gl || Object.keys(gl).length != 3) return;
 
         let teams = []
         for (const t of [ 'team1', 'team2' ]) {

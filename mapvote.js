@@ -447,7 +447,7 @@ export default class MapVote extends DiscordBasePlugin {
             case "help": //displays available commands
                 let msg = "";
                 msg += (`!vote\n > choices\n > results\n`);
-                if (isAdmin) msg += (`\n Admin only:\n > start\n > restart\n > cancel\n > broadcast`);
+                if (isAdmin) msg += (`\n Admin only:\n > start\n > restart\n > cancel\n > broadcast\n > endmatch`);
 
                 await this.warn(steamID, msg + `\nMapVote SquadJS plugin built by JetDave`);
                 return;
@@ -1035,39 +1035,40 @@ export default class MapVote extends DiscordBasePlugin {
             if (!Layers.layers.find((e) => e.layerid == layer.rawName)) Layers.layers.push(new Layer(layer));
         }
 
-        const sheetCsv = (await axios.get('https://docs.google.com/spreadsheets/d/1OYO1IvNI0wrUZWKz_pz6Ka1xFAvBjBupddYn2E4fNFg/gviz/tq?tqx=out:csv&sheet=Map%20Layers')).data?.replace(/\"/g, '').split('\n')//.map((l) => l.split(','))
+        const sheetCsv = (await axios.get('https://docs.google.com/spreadsheets/d/1OYO1IvNI0wrUZWKz_pz6Ka1xFAvBjBupddYn2E4fNFg/gviz/tq?tqx=out:csv&sheet=Map%20Layers')).data?.replace(/\"/g, '')?.split('\n')//.map((l) => l.split(','))
+        sheetCsv.shift();
         // this.verbose(1, 'Sheet', Layers.layers.length, sheetCsv.length, sheetCsv.find(l => l[ 2 ] == "Manicouagan_RAAS_v1"))
         // this.verbose(1, 'Sheet', sheetCsv)
 
         const rconLayers = (await this.server.rcon.execute('ListLayers')).split('\n');
         rconLayers.shift();
+        Layers.layers = Layers.layers.filter((l) => rconLayers.includes(l.layerid))
         // this.verbose(1, 'RCON Layers', this.mapLayer(rconLayers[ 0 ]))
-        for (const layer of rconLayers) {
-            if (!Layers.layers.find((e) => e.layerid == layer)) {
-                let newLayer = this.mapLayer(layer);
+        if (sheetCsv.length > 0) {
+            for (const layer of rconLayers) {
+                if (!Layers.layers.find((e) => e.layerid == layer)) {
+                    let newLayer = this.mapLayer(layer);
 
-                const csvLayer = sheetCsv.find(l => l.includes(newLayer.layerid))?.split(',');
-                // console.log(newLayer.layerid, csvLayer[ 2 ]);
-                if (csvLayer) {
-                    if (csvLayer[ 6 ]) newLayer.teams[ 0 ].faction = csvLayer[ 6 ]
-                    newLayer.teams[ 0 ].name = newLayer.teams[ 0 ].faction
-                    if (csvLayer[ 9 ]) newLayer.teams[ 0 ].numberOfTanks = parseNumberOfAssets(csvLayer[ 9 ])
-                    if (csvLayer[ 13 ]) newLayer.teams[ 0 ].numberOfHelicopters = parseNumberOfAssets(csvLayer[ 13 ])
-                    if (csvLayer[ 5 ]) newLayer.teams[ 0 ].commander = csvLayer[ 5 ].toLowerCase() == 'yes'
+                    const csvLayer = sheetCsv.find(l => l.includes(newLayer.layerid))?.split(',');
+                    // console.log(newLayer.layerid, csvLayer[ 2 ]);
+                    if (csvLayer) {
+                        if (csvLayer[ 6 ]) newLayer.teams[ 0 ].faction = csvLayer[ 6 ]
+                        newLayer.teams[ 0 ].name = newLayer.teams[ 0 ].faction
+                        if (csvLayer[ 9 ]) newLayer.teams[ 0 ].numberOfTanks = parseNumberOfAssets(csvLayer[ 9 ])
+                        if (csvLayer[ 13 ]) newLayer.teams[ 0 ].numberOfHelicopters = parseNumberOfAssets(csvLayer[ 13 ])
+                        if (csvLayer[ 5 ]) newLayer.teams[ 0 ].commander = csvLayer[ 5 ].toLowerCase() == 'yes'
 
-                    if (csvLayer[ 10 ]) newLayer.teams[ 1 ].faction = csvLayer[ 10 ]
-                    newLayer.teams[ 1 ].name = newLayer.teams[ 1 ].faction
-                    newLayer.teams[ 1 ].numberOfTanks = newLayer.teams[ 0 ].numberOfTanks
-                    newLayer.teams[ 1 ].numberOfHelicopters = newLayer.teams[ 0 ].numberOfHelicopters
-                    newLayer.teams[ 1 ].commander = newLayer.teams[ 0 ].commander
+                        if (csvLayer[ 10 ]) newLayer.teams[ 1 ].faction = csvLayer[ 10 ]
+                        newLayer.teams[ 1 ].name = newLayer.teams[ 1 ].faction
+                        newLayer.teams[ 1 ].numberOfTanks = newLayer.teams[ 0 ].numberOfTanks
+                        newLayer.teams[ 1 ].numberOfHelicopters = newLayer.teams[ 0 ].numberOfHelicopters
+                        newLayer.teams[ 1 ].commander = newLayer.teams[ 0 ].commander
+                    }
+
+                    Layers.layers.push(newLayer);
                 }
-
-                Layers.layers.push(newLayer);
             }
         }
-
-        sheetCsv.shift();
-
 
         this.verbose(1, 'Layer list updated', Layers.layers.length, 'total layers');
         // this.verbose(1, 'Layers', Layers.layers);

@@ -335,20 +335,20 @@ export default class MapVote extends DiscordBasePlugin {
                 this.verbose(1, "Checking seeding mode");
                 const maxSeedingModePlayerCount = Math.max(this.options.nextLayerSeedingModePlayerCount, this.options.instantSeedingModePlayerCount);
                 if (this.server.players.length >= 1 && this.server.players.length < maxSeedingModePlayerCount) {
-                    const seedingMaps = Layers.layers.filter((l) => l.layerid && l.gamemode.toLowerCase() == this.options.seedingGameMode && !this.options.layerLevelBlacklist.find((fl) => l.layerid.toLowerCase().startsWith(fl.toLowerCase())))
-
-                    const rndMap = randomElement(seedingMaps);
-                    if (this.server.currentLayer) {
-                        if (this.server.currentLayer.gamemode.toLowerCase() != this.options.seedingGameMode) {
-                            if (this.server.players.length <= this.options.instantSeedingModePlayerCount) {
-                                const newCurrentMap = rndMap.layerid;
-                                this.verbose(1, 'Going into seeding mode.');
-                                this.server.rcon.execute(`AdminChangeLayer ${newCurrentMap} `);
-                            }
-                        }
-                    } else this.verbose(1, "Bad data (currentLayer). Seeding mode for current layer skipped to prevent errors.");
-
                     if (+(new Date()) - +this.server.layerHistory[ 0 ].time > 30 * 1000) {
+                        const seedingMaps = Layers.layers.filter((l) => l.layerid && l.gamemode.toLowerCase() == this.options.seedingGameMode && !this.options.layerLevelBlacklist.find((fl) => l.layerid.toLowerCase().startsWith(fl.toLowerCase())))
+
+                        const rndMap = randomElement(seedingMaps);
+                        if (this.server.currentLayer) {
+                            if (this.server.currentLayer.gamemode.toLowerCase() != this.options.seedingGameMode) {
+                                if (this.server.players.length <= this.options.instantSeedingModePlayerCount) {
+                                    const newCurrentMap = rndMap.layerid;
+                                    this.verbose(1, 'Going into seeding mode.');
+                                    this.server.rcon.execute(`AdminChangeLayer ${newCurrentMap} `);
+                                }
+                            }
+                        } else this.verbose(1, "Bad data (currentLayer). Seeding mode for current layer skipped to prevent errors.");
+
                         if (this.server.nextLayer) {
                             const nextMaps = seedingMaps.filter((l) => (!this.server.currentLayer || l.layerid != this.server.currentLayer.layerid))
                             let rndMap2;
@@ -360,8 +360,7 @@ export default class MapVote extends DiscordBasePlugin {
                                 this.server.rcon.execute(`AdminSetNextLayer ${newNextMap} `);
                             }
                         } else this.verbose(1, "Bad data (nextLayer). Seeding mode for next layer skipped to prevent errors.");
-                    }
-
+                    } else this.verbose(1, `Waiting 30 seconds from mapchange before entering seeding mode`);
                 } else this.verbose(1, `Player count doesn't allow seeding mode (${this.server.players.length}/${maxSeedingModePlayerCount})`);
             } else this.verbose(1, "Seeding mode disabled in config");
         } else console.log("[MapVote][1] Bad data (this/this.server/this.options). Seeding mode skipped to prevent errors.");

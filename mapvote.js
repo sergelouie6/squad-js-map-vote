@@ -703,13 +703,11 @@ export default class MapVote extends DiscordBasePlugin {
     async endVotingGently(steamID = null) {
         if (!this.votingEnabled) return;
 
-        this.endVoting();
-
-        if (steamID) await this.warn(steamID, "Voting terminated!");
-
         const winningLayerId = this.updateNextMap();
-        if (!winningLayerId) return;
-
+        if (!winningLayerId) {
+            this.verbose(1, 'No winning layer available', winningLayerId)
+            return;
+        }
         const winnerLayer = Layers.layers.find((l) => l.layerid == winningLayerId);
         const fancyWinner = this.formatFancyLayer(winnerLayer);
 
@@ -761,6 +759,9 @@ export default class MapVote extends DiscordBasePlugin {
                 timestamp: (new Date()).toISOString()
             });
         }
+        
+        this.endVoting();
+        if (steamID) await this.warn(steamID, "Voting terminated!");
 
         return true;
     }
@@ -1012,15 +1013,16 @@ export default class MapVote extends DiscordBasePlugin {
             const score = this.tallies[ choice ];
             if (score >= this.options.minimumVotesToAcceptResult) {
                 if (score < highestScore)
-                    continue;
+                continue;
                 else if (score > highestScore) {
                     highestScore = score;
                     ties.length = 0;
                     ties.push(choice);
                 }
                 else // equal
-                    ties.push(choice);
+                ties.push(choice);
             }
+            this.verbose(1, 'Ties', ties, ties.map(i => this.nominations[ i ]))
         }
 
         return ties.map(i => this.nominations[ i ]);

@@ -240,6 +240,36 @@ Array of timeframes that allows to override options based on local time. See exa
 ```json
 []
 ```
+#### minimumVotesToAcceptResult
+###### Description
+Minimum votes per map to accept result. 
+
+Can be used to prevent situation when insignificant number of players decide what map should be next, but most still wants to play map according to rotation.
+###### Default
+```json
+1
+```
+#### seedingGameMode
+###### Description
+Gamemode used in seeding mode. 
+###### Default
+```json
+"Seed"
+```
+#### instantSeedingModePlayerCount
+###### Description
+Required player count to trigger an instant layer change to a seeding layer. 
+###### Default
+```json
+5
+```
+#### nextLayerSeedingModePlayerCount
+###### Description
+Required player count to change the next layer to a seeding layer. 
+###### Default
+```json
+20
+```
 ###### Timeframe format
 ```javascript
 {
@@ -251,15 +281,6 @@ Array of timeframes that allows to override options based on local time. See exa
         layerLevelBlacklist: [ "Anvil", "Chora" ]
     }
 }
-```
-#### minimumVotesToAcceptResult
-###### Description
-Minimum votes per map to accept result. 
-
-Can be used to prevent situation when insignificant number of players decide what map should be next, but most still wants to play map according to rotation.
-###### Default
-```json
-1
 ```
 ### Example configuration
 ```json
@@ -294,6 +315,9 @@ Can be used to prevent situation when insignificant number of players decide wha
     "persistentDataFile": "",
     "timezone": 2,
     "minimumVotesToAcceptResult": 1,
+    "instantSeedingModePlayerCount": 5,
+    "nextLayerSeedingModePlayerCount": 20,
+    "seedingGameMode": "Seed",
     "timeFrames": [
         {
             "name": "follow layer rotation list",

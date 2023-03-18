@@ -171,6 +171,21 @@ export default class MapVote extends DiscordBasePlugin {
                 description: "Minimum votes per map to accept result.",
                 default: 1
             },
+            seedingGameMode: {
+                required: false,
+                description: "Gamemode used in seeding mode",
+                default: "Seed"
+            },
+            instantSeedingModePlayerCount: {
+                required: false,
+                description: "Required player count to trigger an instant layer change to a seeding layer",
+                default: 5
+            },
+            nextLayerSeedingModePlayerCount: {
+                required: false,
+                description: "Required player count to change the next layer to a seeding layer",
+                default: 20
+            },
             timeFrames: {
                 required: false,
                 description: 'Array of timeframes to override options',
@@ -312,18 +327,20 @@ export default class MapVote extends DiscordBasePlugin {
         }
     }
     setSeedingMode(isNewGameEvent = false) {
+        this.options.seedingGameMode = this.options.seedingGameMode.toLowerCase();
         // this.msgBroadcast("[MapVote] Seeding mode active")
         const baseDataExist = this && this.options && this.server && this.server.players;
         if (baseDataExist) {
             if (this.options.automaticSeedingMode) {
                 this.verbose(1, "Checking seeding mode");
-                if (this.server.players.length >= 1 && this.server.players.length < 40) {
-                    const seedingMaps = Layers.layers.filter((l) => l.layerid && l.gamemode.toUpperCase() == "SEED" && !this.options.layerLevelBlacklist.find((fl) => l.layerid.toLowerCase().startsWith(fl.toLowerCase())))
+                const maxSeedingModePlayerCount = Math.max(this.options.nextLayerSeedingModePlayerCount, this.options.instantSeedingModePlayerCount);
+                if (this.server.players.length >= 1 && this.server.players.length < maxSeedingModePlayerCount) {
+                    const seedingMaps = Layers.layers.filter((l) => l.layerid && l.gamemode.toLowerCase() == this.options.seedingGameMode && !this.options.layerLevelBlacklist.find((fl) => l.layerid.toLowerCase().startsWith(fl.toLowerCase())))
 
                     const rndMap = randomElement(seedingMaps);
                     if (this.server.currentLayer) {
-                        if (this.server.currentLayer.gamemode.toLowerCase() != "seed") {
-                            if (this.server.players.length <= 5) {
+                        if (this.server.currentLayer.gamemode.toLowerCase() != this.options.seedingGameMode) {
+                            if (this.server.players.length <= this.options.instantSeedingModePlayerCount) {
                                 const newCurrentMap = rndMap.layerid;
                                 this.verbose(1, 'Going into seeding mode.');
                                 this.server.rcon.execute(`AdminChangeLayer ${newCurrentMap} `);
@@ -338,14 +355,14 @@ export default class MapVote extends DiscordBasePlugin {
                             do rndMap2 = randomElement(nextMaps);
                             while (rndMap2.layerid == rndMap.layerid)
 
-                            if (this.server.players.length < 20 && this.server.nextLayer.gamemode.toLowerCase() != "seed") {
+                            if (this.server.players.length < this.options.nextLayerSeedingModePlayerCount && this.server.nextLayer.gamemode.toLowerCase() != "seed") {
                                 const newNextMap = rndMap2.layerid;
                                 this.server.rcon.execute(`AdminSetNextLayer ${newNextMap} `);
                             }
                         } else this.verbose(1, "Bad data (nextLayer). Seeding mode for next layer skipped to prevent errors.");
                     }
 
-                } else this.verbose(1, `Player count doesn't allow seeding mode (${this.server.players.length}/20)`);
+                } else this.verbose(1, `Player count doesn't allow seeding mode (${this.server.players.length}/${maxSeedingModePlayerCount})`);
             } else this.verbose(1, "Seeding mode disabled in config");
         } else console.log("[MapVote][1] Bad data (this/this.server/this.options). Seeding mode skipped to prevent errors.");
     }
@@ -759,7 +776,7 @@ export default class MapVote extends DiscordBasePlugin {
                 timestamp: (new Date()).toISOString()
             });
         }
-        
+
         this.endVoting();
         if (steamID) await this.warn(steamID, "Voting terminated!");
 
@@ -1013,14 +1030,14 @@ export default class MapVote extends DiscordBasePlugin {
             const score = this.tallies[ choice ];
             if (score >= this.options.minimumVotesToAcceptResult) {
                 if (score < highestScore)
-                continue;
+                    continue;
                 else if (score > highestScore) {
                     highestScore = score;
                     ties.length = 0;
                     ties.push(choice);
                 }
                 else // equal
-                ties.push(choice);
+                    ties.push(choice);
             }
             this.verbose(1, 'Ties', ties, ties.map(i => this.nominations[ i ]))
         }

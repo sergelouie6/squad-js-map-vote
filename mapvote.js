@@ -1103,7 +1103,7 @@ export default class MapVote extends DiscordBasePlugin {
     mapLayer(l) {
         l = l.replace(/[^a-z_\d]/gi, '')
         // this.verbose(1, 'Parsing layer', l)
-        const gl = /^(?<level>\w+)_(?<gamemode>\w+)_(?<version>\w+)$/i.exec(l)?.groups
+        const gl = /^((?<mod>\w+_))?(?<level>\w+)_(?<gamemode>\w+)_(?<version>\w+)$/i.exec(l)?.groups
         // this.verbose(1, 'Parsed layer', gl)
         if (!gl || Object.keys(gl).length != 3) return;
 

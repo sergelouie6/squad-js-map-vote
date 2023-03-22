@@ -1025,9 +1025,10 @@ export default class MapVote extends DiscordBasePlugin {
         const ties = [];
 
         let highestScore = -Infinity;
+        const allScoreZero = this.tallies.find(s => s > 0) ? false : true;
         for (let choice in this.tallies) {
             const score = this.tallies[ choice ];
-            if (score >= this.options.minimumVotesToAcceptResult) {
+            if (score >= this.options.minimumVotesToAcceptResult || allScoreZero) {
                 if (score < highestScore)
                     continue;
                 else if (score > highestScore) {

@@ -1048,6 +1048,12 @@ export default class MapVote extends DiscordBasePlugin {
     async updateLayerList() {
         // Layers.layers = [];
 
+        if (!Layers.layers instanceof Array) {
+            this.verbose(1, `Could not update layer list. Re-trying in 1 second.`)
+            setTimeout(this.updateLayerList, 1000);
+            return;
+        }
+
         this.verbose(1, 'Pulling updated layer list...');
         const response = await axios.get(
             'https://raw.githubusercontent.com/Squad-Wiki/squad-wiki-pipeline-map-data/master/completed_output/_Current%20Version/finished.json'

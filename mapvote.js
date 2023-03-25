@@ -1095,7 +1095,10 @@ export default class MapVote extends DiscordBasePlugin {
                         newLayer.teams[ 1 ].commander = newLayer.teams[ 0 ].commander
                     }
 
-                    Layers.layers.push(newLayer);
+                    if (Layers._layers && Layers._layers instanceof Map)
+                        Layers._layers.set(newLayer.layerid, newLayer);
+                    else
+                        Layers.layers.push(newLayer);
                 }
             }
         }

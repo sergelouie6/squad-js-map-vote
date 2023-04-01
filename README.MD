@@ -147,12 +147,16 @@ factions to exclude in map vote. ( ex: ['CAF'] )
 ```json
 []
 ```
-#### minRaasEntries
+#### minGamemodeEntries
 ###### Description
-Minimum amount of RAAS layers in the vote list.
+Minimum amount layers in the vote list per gamemode.
 ###### Default
 ```json
-2
+{
+    "raas": 2,
+    "aas": 2,
+    "invasion": 0
+}
 ```
 #### hideVotesCount
 ###### Description
@@ -302,7 +306,6 @@ Required player count to change the next layer to a seeding layer.
     "layerLevelWhitelist": [ "Yeho", "Gorodok", "Mutaha", "Narva", "Tallil" ],
     "applyBlacklistToWhitelist": true,
     "factionsBlacklist": [ "CAF", "INS" ],
-    "minRaasEntries": 2,
     "hideVotesCount": false,
     "showRerollOption": true,
     "showRerollOptionInCustomVotes": false,
@@ -318,6 +321,11 @@ Required player count to change the next layer to a seeding layer.
     "instantSeedingModePlayerCount": 5,
     "nextLayerSeedingModePlayerCount": 20,
     "seedingGameMode": "Seed",
+    "minGamemodeEntries": {
+        "raas": 2,
+        "aas": 2,
+        "invasion": 0
+    },
     "timeFrames": [
         {
             "name": "follow layer rotation list",

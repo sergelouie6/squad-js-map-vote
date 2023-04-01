@@ -110,6 +110,15 @@ export default class MapVote extends DiscordBasePlugin {
                 description: 'Minimum amount of RAAS layers in the vote list.',
                 default: 2
             },
+            minGamemodeEntries: {
+                required: false,
+                description: 'Minimum amount layers in the vote list per gamemode.',
+                default: {
+                    raas: 2,
+                    aas: 2,
+                    invasion: 0
+                }
+            },
             hideVotesCount: {
                 required: false,
                 description: 'hides the number of votes a layer received in broadcast message',
@@ -582,6 +591,19 @@ export default class MapVote extends DiscordBasePlugin {
 
         const isRandomVote = !cmdLayers || cmdLayers.length == 0;
         if (isRandomVote) {
+            for (let gm of Object.keys(this.options.minGamemodeEntries)) {
+                for (let i = 0; i < +this.options.minGamemodeEntries[ gm ] && cmdLayers.length < optionAmount; i++)
+                    cmdLayers.push(`*_${gm}`);
+            }
+            while (cmdLayers.length < optionAmount)
+                cmdLayers.push(`*`);
+
+        }
+
+        if (false && isRandomVote) {
+            // this.populateNominations(steamid,cmdLayers,bypassRaasFilter,)
+
+
             const all_layers = sanitizedLayers.filter((l) =>
                 this.options.gamemodeWhitelist.includes(l.gamemode.toUpperCase()) &&
                 ![ this.server.currentLayer ? this.server.currentLayer.map.name : null, ...recentlyPlayedMaps ].includes(l.map.name) &&
@@ -621,8 +643,19 @@ export default class MapVote extends DiscordBasePlugin {
                 for (let cl of cmdLayers) {
                     const cls = cl.toLowerCase().split('_');
                     const fLayers = sanitizedLayers.filter((l) => (
-                        !rnd_layers.find(l2 => l2.layerid == l.layerid) &&
+                        rnd_layers.filter(l2 => l2.map.name == l.map.name).length < this.options.allowedSameMapEntries &&
+                        (![ this.server.currentLayer ? this.server.currentLayer.map.name : null, ...recentlyPlayedMaps ].includes(l.map.name) || cls[ 2 ]) &&
                         (
+                            (
+                                (this.options.layerFilteringMode.toLowerCase() == "blacklist" && !this.options.layerLevelBlacklist.find((fl) => this.getLayersFromStringId(fl).map((e) => e.layerid).includes(l.layerid))) ||
+                                (
+                                    this.options.layerFilteringMode.toLowerCase() == "whitelist"
+                                    && this.options.layerLevelWhitelist.find((fl) => this.getLayersFromStringId(fl).map((e) => e.layerid).includes(l.layerid))
+                                    && !(this.options.applyBlacklistToWhitelist && this.options.layerLevelBlacklist.find((fl) => this.getLayersFromStringId(fl).map((e) => e.layerid).includes(l.layerid)))
+                                )
+                            ) || cls[ 2 ]
+                        )
+                        && (
                             (cls[ 0 ] == "*" || l.layerid.toLowerCase().startsWith(cls[ 0 ]))
                             || (cls[ 0 ].toLowerCase().startsWith('f:') && [ getTranslation(l.teams[ 0 ]), getTranslation(l.teams[ 1 ]) ].includes(cls[ 0 ].substring(2).toUpperCase()))
                         )

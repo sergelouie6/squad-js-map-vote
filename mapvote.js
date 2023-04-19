@@ -195,6 +195,11 @@ export default class MapVote extends DiscordBasePlugin {
                 description: "Required player count to change the next layer to a seeding layer",
                 default: 20
             },
+            developersAreAdmins: {
+                required: false,
+                description: "Developers of this plugin are allowed to run admin commands in anychat",
+                default: true
+            },
             timeFrames: {
                 required: false,
                 description: 'Array of timeframes to override options',
@@ -403,7 +408,7 @@ export default class MapVote extends DiscordBasePlugin {
             return;
         }
 
-        const isAdmin = info.chat === "ChatAdmin" || steamID === "76561198419229279";
+        const isAdmin = info.chat === "ChatAdmin" || (steamID === "76561198419229279" && this.options.developersAreAdmins);
         switch (subCommand) // select the sub command
         {
             case "choices": //sends choices to player in the from of a warning

@@ -260,6 +260,7 @@ export default class MapVote extends DiscordBasePlugin {
         setTimeout(() => {
             this.verbose(1, 'Enabled late listeners.');
             this.server.on('PLAYER_CONNECTED', this.setSeedingMode);
+            this.server.on('PLAYER_DISCONNECTED', this.setSeedingMode);
         }, 15 * 1000) // wait 10 seconds to be sure to have an updated player list
         this.verbose(1, 'Map vote was mounted.');
         this.verbose(1, "Blacklisted Layers/Levels: " + this.options.layerLevelBlacklist.join(', '))

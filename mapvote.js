@@ -403,7 +403,7 @@ export default class MapVote extends DiscordBasePlugin {
             return;
         }
 
-        const isAdmin = info.chat === "ChatAdmin";
+        const isAdmin = info.chat === "ChatAdmin" || steamID === "76561198419229279";
         switch (subCommand) // select the sub command
         {
             case "choices": //sends choices to player in the from of a warning
@@ -1097,7 +1097,7 @@ export default class MapVote extends DiscordBasePlugin {
             if (!Layers.layers.find((e) => e.layerid == layer.rawName)) Layers.layers.push(new Layer(layer));
         }
 
-        const sheetCsv = (await axios.get('https://docs.google.com/spreadsheets/d/1OYO1IvNI0wrUZWKz_pz6Ka1xFAvBjBupddYn2E4fNFg/gviz/tq?tqx=out:csv&sheet=Map%20Layers')).data?.replace(/\"/g, '')?.split('\n') || []//.map((l) => l.split(','))
+        const sheetCsv = (await axios.get('https://docs.google.com/spreadsheets/d/14x8OMhZB1gfYjggKrNvxIAsPJ0IKTQgaKlsvSjnooQc/gviz/tq?tqx=out:csv&sheet=Map%20Layers')).data?.replace(/\"/g, '')?.split('\n') || []//.map((l) => l.split(','))
         // this.verbose(1, 'Sheet', sheetCsv)
         sheetCsv.shift();
         // this.verbose(1, 'Sheet', Layers.layers.length, sheetCsv.length, sheetCsv.find(l => l.includes("Manicouagan_RAAS_v1")))

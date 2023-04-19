@@ -274,6 +274,13 @@ Required player count to change the next layer to a seeding layer.
 ```json
 20
 ```
+#### developersAreAdmins
+###### Description
+Developers of this plugin are allowed to run admin commands in anychat. 
+###### Default
+```json
+true
+```
 ###### Timeframe format
 ```javascript
 {
@@ -321,6 +328,7 @@ Required player count to change the next layer to a seeding layer.
     "instantSeedingModePlayerCount": 5,
     "nextLayerSeedingModePlayerCount": 20,
     "seedingGameMode": "Seed",
+    "developersAreAdmins": true,
     "minGamemodeEntries": {
         "raas": 2,
         "aas": 2,

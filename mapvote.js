@@ -7,6 +7,9 @@ import axios from "axios"
 import Layer from '../layers/layer.js';
 import fs from 'fs'
 import process from 'process'
+import SocketIOAPI from './socket-io-api.js';
+// import DiscordServerStatus from './discord-server-status.js';
+import Gamedig from 'gamedig';
 
 export default class MapVote extends DiscordBasePlugin {
     static get description() {
@@ -200,6 +203,11 @@ export default class MapVote extends DiscordBasePlugin {
                 description: "Developers of this plugin are allowed to run admin commands in anychat",
                 default: true
             },
+            filterByMod: {
+                required: false,
+                description: "Array including mod prefixes",
+                default: []
+            },
             timeFrames: {
                 required: false,
                 description: 'Array of timeframes to override options',
@@ -248,6 +256,9 @@ export default class MapVote extends DiscordBasePlugin {
         this.formatChoice = this.formatChoice.bind(this);
         this.updateNextMap = this.updateNextMap.bind(this);
         this.mapLayer = this.mapLayer.bind(this);
+        this.getLayersFromStringId = this.getLayersFromStringId.bind(this);
+        this.debugWebpage = this.debugWebpage.bind(this);
+        this.serverQueryData = this.serverQueryData.bind(this);
 
         this.broadcast = async (msg) => { await this.server.rcon.broadcast(msg); };
         this.warn = async (steamid, msg) => { await this.server.rcon.warn(steamid, msg); };
@@ -273,6 +284,11 @@ export default class MapVote extends DiscordBasePlugin {
         this.timeframeOptionOverrider();
         setInterval(this.timeframeOptionOverrider, 1 * 60 * 1000)
         setInterval(this.savePersistentData, 20 * 1000)
+        this.debugWebpage();
+
+        this.serverQueryData();
+        setInterval(this.serverQueryData, 5000);
+        this.server.on('UPDATED_A2S_INFORMATION', this.serverQueryData)
     }
 
     async unmount() {
@@ -283,12 +299,80 @@ export default class MapVote extends DiscordBasePlugin {
         this.verbose(1, 'Map vote was un-mounted.');
     }
 
+    async serverQueryData(info) {
+        if (
+            this.server.layerHistory[ 0 ].layer &&
+            this.server.currentLayer
+        ) return;
+
+        const data = await Gamedig.query({
+            type: 'squad',
+            host: this.server.options.host,
+            port: this.server.options.queryPort
+        });
+        const currentLayerId = data.map;
+        // const currentLayer = Layers.layers.find((l) => l.layerid == currentLayerId);
+        const currentLayer = Layers.layers.find(l => l.layerid == currentLayerId);
+
+        if (!this.server.currentLayer) this.server.currentLayer = currentLayer;
+        if (!this.server.layerHistory[ 0 ].layer?.layerid) this.server.layerHistory[ 0 ].layer = currentLayer;
+
+        // if (!this.server.nextLayer) {
+        //     const rconNextLayerMatch = (await this.server.rcon.execute('ShowNextMap')).replace(/ \(.+\)$/, '').match(/Next level is .+\, layer is (.+) (.+) (.+)$/);
+        //     this.verbose(1, 'RCON next layer', rconNextLayerMatch)
+        //     if (rconNextLayerMatch) {
+        //         const nextLayer = Layers.layers.find(l => l.name == rconNextLayerMatch[ 1 ] && l.gamemode == rconNextLayerMatch[ 2 ] && l.version.replace(/[^\d]/, '') == rconNextLayerMatch[ 3 ].replace(/[^\d]/, ''))
+        //         this.verbose(1, 'FOUND Next Layer', nextLayer)
+        //         this.server.nextLayer = nextLayer;
+        //     }
+        // }
+        // let discordServerStatusPlugin = this.server.plugins.find(p => p instanceof DiscordServerStatus);
+        // discordServerStatusPlugin.updateStatus();
+
+        this.verbose(1, 'Current Layer', currentLayer)
+    }
+
+    debugWebpage() {
+        let socketIo = this.server.plugins.find(p => p instanceof SocketIOAPI);
+        try {
+            socketIo.httpServer.on('request', async (req, res) => {
+                this.verbose(2, 'Request', req.url)
+                if (req.method == 'GET' && req.url == '/mapvote/debug/layerHistory') {
+                    // this.verbose(1, `Sending response to "${req.url}"`)
+                    res.setHeader('Content-Type', 'application/json');
+                    res.write(JSON.stringify(this.server.layerHistory, null, 2))
+                    res.end();
+                } else if (req.method == 'GET' && req.url == '/mapvote/debug/layers') {
+
+                    // this.verbose(1, `Sending response to "${req.url}"`)
+                    res.setHeader('Content-Type', 'application/json');
+                    res.write(JSON.stringify(Layers.layers, null, 2))
+                    res.end();
+                } else if (req.method == 'GET' && req.url == '/mapvote/debug/currentLayer') {
+
+                    // this.verbose(1, `Sending response to "${req.url}"`)
+                    res.setHeader('Content-Type', 'application/json');
+                    res.write(JSON.stringify(this.server.currentLayer, null, 2))
+                    res.end();
+                } else if (req.method == 'GET' && req.url == '/mapvote/debug/nextLayer') {
+                    res.setHeader('Content-Type', 'application/json');
+                    res.write(JSON.stringify(this.server.nextLayer, null, 2))
+                    res.end();
+                }
+            })
+        } catch (error) {
+            this.verbose(1, 'Unable to start debug webpages', error)
+        }
+    }
+
     async onNewGame() {
         for (let x of this.timeout_ps)
             clearTimeout(x)
         this.timeout_ps = [];
 
         if (this.options.automaticVoteStart) this.autovotestart = setTimeout(this.beginVoting, toMils(this.options.voteWaitTimeFromMatchStart));
+
+
         // this.endVotingTimeout = setTimeout(async () => {
         //     this.endVoting();
         //     this.trackedVotes = {};
@@ -529,8 +613,10 @@ export default class MapVote extends DiscordBasePlugin {
         if (!skipSetNextMap) {
             const baseDataExist = this && this.server;
             const layerDataExist = this.server.nextLayer && this.server.nextLayer.layerid;
-            if (baseDataExist && (!layerDataExist || this.server.nextLayer.layerid != nextMap))
+            if (baseDataExist && (!layerDataExist || this.server.nextLayer.layerid != nextMap)) {
                 this.server.rcon.execute(`AdminSetNextLayer ${nextMap}`);
+                this.server.nextLayer = Layers.layers.find(l => l.layerid == nextMap);
+            }
             else console.log("[MapVote][1] Bad data (this/this.server). Next layer not set to prevent errors.");
         }
         return nextMap;
@@ -588,7 +674,9 @@ export default class MapVote extends DiscordBasePlugin {
         this.factionStrings = [];
         let rnd_layers = [];
 
-        const sanitizedLayers = Layers.layers.filter((l) => l.layerid && l.map);
+        const sanitizedLayers = Layers.layers.filter((l) => l.layerid && l.map &&
+            (this.options.filterByMod.length == 0 || this.options.filterByMod.find(m => m.toLowerCase() == l?.mod?.toLowerCase() || ''))
+        );
         const maxOptions = this.options.showRerollOption ? 20 : 21;
         const optionAmount = Math.min(maxOptions, this.options.entriesAmount);
 
@@ -605,6 +693,7 @@ export default class MapVote extends DiscordBasePlugin {
                 cmdLayers.push(`*`);
 
         }
+        // this.warn(steamid, `Random vote: ${isRandomVote}: ${cmdLayers.join('; ')}`)
 
         if (false && isRandomVote) {
             // this.populateNominations(steamid,cmdLayers,bypassRaasFilter,)
@@ -644,12 +733,14 @@ export default class MapVote extends DiscordBasePlugin {
         } else {
             if (cmdLayers.length == 1) while (cmdLayers.length < optionAmount) cmdLayers.push(cmdLayers[ 0 ])
 
+            let iterationLayersCount = [];
+
             if (cmdLayers.length <= maxOptions) {
                 let i = 1;
                 for (let cl of cmdLayers) {
                     const cls = cl.toLowerCase().split('_');
                     const fLayers = sanitizedLayers.filter((l) => (
-                        rnd_layers.filter(l2 => l2.map.name == l.map.name).length < this.options.allowedSameMapEntries &&
+                        ((cls[ 1 ] && cls[ 1 ] != '*') || rnd_layers.filter(l2 => l2.map.name == l.map.name).length < this.options.allowedSameMapEntries) &&
                         (![ this.server.currentLayer ? this.server.currentLayer.map.name : null, ...recentlyPlayedMaps ].includes(l.map.name) || cls[ 2 ]) &&
                         (
                             (
@@ -673,6 +764,19 @@ export default class MapVote extends DiscordBasePlugin {
                             || this.options.factionsBlacklist.find((f) => [ getTranslation(l.teams[ 0 ]), getTranslation(l.teams[ 1 ]) ].includes(f))
                         ))
                     ));
+                    iterationLayersCount.push(fLayers.length);
+                    // this.warn(steamid, `SanLayer: ${sanitizedLayers.filter(l => (
+                    //     (
+                    //         (
+                    //             (this.options.layerFilteringMode.toLowerCase() == "blacklist" && !this.options.layerLevelBlacklist.find((fl) => this.getLayersFromStringId(fl).map((e) => e.layerid).includes(l.layerid))) ||
+                    //             (
+                    //                 this.options.layerFilteringMode.toLowerCase() == "whitelist"
+                    //                 && this.options.layerLevelWhitelist.find((fl) => this.getLayersFromStringId(fl).find(fl => fl.layerid == l.layerid))
+                    //                 // && !(this.options.applyBlacklistToWhitelist && this.options.layerLevelBlacklist.find((fl) => this.getLayersFromStringId(fl).find(fl => fl.layerid == l.layerid)))
+                    //             )
+                    //         ) || cls[ 2 ]
+                    //     )
+                    // )).length}`)
                     if (fLayers.length == 0) continue;
                     // this.verbose(1, 'fLayers', fLayers.map(l => l.layerid));
                     // this.verbose(1, 'rnd_layers', rnd_layers.map(l => l.layerid));
@@ -686,6 +790,12 @@ export default class MapVote extends DiscordBasePlugin {
                         i++;
                     }
                 }
+
+                if (rnd_layers.length == 0) {
+                    this.warn(steamid, `Could not start a vote due to randomized layer list being filtered to 0`)
+                    return;
+                }
+                this.warn(steamid, `Iteration layers count: ${iterationLayersCount.join('; ')}`);
             }
             else if (steamid) {
                 this.warn(steamid, "You cannot start a vote with more than " + maxOptions + " options");
@@ -915,7 +1025,16 @@ export default class MapVote extends DiscordBasePlugin {
 
     getLayersFromStringId(stringid) {
         const cls = stringid.toLowerCase().split('_');
-        const ret = Layers.layers.filter((l) => ((cls[ 0 ] == "*" || l.layerid.toLowerCase().startsWith(cls[ 0 ])) && (l.gamemode.toLowerCase().startsWith(cls[ 1 ]) || (!cls[ 1 ] && [ 'RAAS', 'AAS', 'INVASION' ].includes(l.gamemode.toUpperCase()))) && (!cls[ 2 ] || parseInt(l.version.toLowerCase().replace(/v/gi, '')) == parseInt(cls[ 2 ].replace(/v/gi, '')))));
+
+        let ret;
+
+        if (stringid.match(/^\/.+\/$/)) {
+            const reg = new RegExp(stringid.replace(/^\//, '').replace(/\/.{0,}$/, ''), 'i')
+            ret = Layers.layers.filter(l => l.layerid.match(reg))
+        } else {
+            if (cls.length <= 3) ret = Layers.layers.filter((l) => ((cls[ 0 ] == "*" || l.layerid.toLowerCase().startsWith(cls[ 0 ])) && (l.gamemode.toLowerCase().startsWith(cls[ 1 ]) || (!cls[ 1 ] && [ 'RAAS', 'AAS', 'INVASION' ].includes(l.gamemode.toUpperCase()))) && (!cls[ 2 ] || parseInt(l.version.toLowerCase().replace(/v/gi, '')) == parseInt(cls[ 2 ].replace(/v/gi, '')))));
+            else ret = Layers.layers.filter((l) => ((cls[ 0 ] == "*" || l.mod?.toLowerCase().startsWith(cls[ 0 ].toLowerCase())) && (cls[ 1 ] == "*" || l.map.name.toLowerCase().startsWith(cls[ 1 ])) && (l.gamemode.toLowerCase().startsWith(cls[ 2 ]) || (!cls[ 2 ] && [ 'RAAS', 'AAS', 'INVASION' ].includes(l.gamemode.toUpperCase()))) && (!cls[ 3 ] || parseInt(l.version.toLowerCase().replace(/v/gi, '')) == parseInt(cls[ 3 ].replace(/v/gi, ''))) && (!cls[ 4 ] || cls[ 4 ] == l.layerid.split('_')[ 4 ]?.toLowerCase())))
+        }
         // this.verbose(1,"layers from string",stringid,cls,ret)
         return ret;
     }
@@ -1111,27 +1230,30 @@ export default class MapVote extends DiscordBasePlugin {
         rconLayers.shift();
 
         if (rconLayers.length > 0) Layers.layers = Layers.layers.filter((l) => l != null && rconLayers.includes(l.layerid))
-        // this.verbose(1, 'RCON Layers', rconLayers.length, this.mapLayer(rconLayers[ 0 ]))
-        if (sheetCsv.length > 0) {
+        // this.verbose(1, 'RCON Layers', rconLayers.length, this.mapLayer(rconLayers[ 1 ]))
+        if (rconLayers.length > 0) {
             for (const layer of rconLayers) {
                 if (!Layers.layers.find((e) => e?.layerid == layer)) {
                     let newLayer = this.mapLayer(layer);
+                    // if(layer.startsWith('GC')) this.verbose(1, 'layer', newLayer)
                     if (!newLayer) continue;
 
-                    const csvLayer = sheetCsv.find(l => l.includes(newLayer?.layerid))?.split(',');
-                    // console.log(newLayer.layerid, csvLayer[ 2 ]);
-                    if (csvLayer) {
-                        if (csvLayer[ 6 ]) newLayer.teams[ 0 ].faction = csvLayer[ 6 ]
-                        newLayer.teams[ 0 ].name = newLayer.teams[ 0 ].faction
-                        if (csvLayer[ 9 ]) newLayer.teams[ 0 ].numberOfTanks = parseNumberOfAssets(csvLayer[ 9 ])
-                        if (csvLayer[ 13 ]) newLayer.teams[ 0 ].numberOfHelicopters = parseNumberOfAssets(csvLayer[ 13 ])
-                        if (csvLayer[ 5 ]) newLayer.teams[ 0 ].commander = csvLayer[ 5 ].toLowerCase() == 'yes'
+                    if (sheetCsv.length > 0) {
+                        const csvLayer = sheetCsv.find(l => l == newLayer?.layerid)?.split(',');
+                        // console.log(newLayer.layerid, csvLayer[ 2 ]);
+                        if (csvLayer) {
+                            if (csvLayer[ 6 ]) newLayer.teams[ 0 ].faction = csvLayer[ 6 ]
+                            newLayer.teams[ 0 ].name = newLayer.teams[ 0 ].faction
+                            if (csvLayer[ 9 ]) newLayer.teams[ 0 ].numberOfTanks = parseNumberOfAssets(csvLayer[ 9 ])
+                            if (csvLayer[ 13 ]) newLayer.teams[ 0 ].numberOfHelicopters = parseNumberOfAssets(csvLayer[ 13 ])
+                            if (csvLayer[ 5 ]) newLayer.teams[ 0 ].commander = csvLayer[ 5 ].toLowerCase() == 'yes'
 
-                        if (csvLayer[ 10 ]) newLayer.teams[ 1 ].faction = csvLayer[ 10 ]
-                        newLayer.teams[ 1 ].name = newLayer.teams[ 1 ].faction
-                        newLayer.teams[ 1 ].numberOfTanks = newLayer.teams[ 0 ].numberOfTanks
-                        newLayer.teams[ 1 ].numberOfHelicopters = newLayer.teams[ 0 ].numberOfHelicopters
-                        newLayer.teams[ 1 ].commander = newLayer.teams[ 0 ].commander
+                            if (csvLayer[ 10 ]) newLayer.teams[ 1 ].faction = csvLayer[ 10 ]
+                            newLayer.teams[ 1 ].name = newLayer.teams[ 1 ].faction
+                            newLayer.teams[ 1 ].numberOfTanks = newLayer.teams[ 0 ].numberOfTanks
+                            newLayer.teams[ 1 ].numberOfHelicopters = newLayer.teams[ 0 ].numberOfHelicopters
+                            newLayer.teams[ 1 ].commander = newLayer.teams[ 0 ].commander
+                        }
                     }
 
                     if (Layers._layers && Layers._layers instanceof Map)
@@ -1143,18 +1265,19 @@ export default class MapVote extends DiscordBasePlugin {
         }
 
         this.verbose(1, 'Layer list updated', Layers.layers.length, 'total layers');
-        // this.verbose(1, 'Layers', Layers.layers);
+        // this.verbose(1, 'Layers', Layers.layers.filter(l => l.layerid.startsWith('GC')));
         function parseNumberOfAssets(string) {
             return /^x(\d)/.exec(string)[ 1 ]
         }
     }
 
     mapLayer(l) {
-        l = l.replace(/[^a-z_\d]/gi, '')
-        // this.verbose(1, 'Parsing layer', l)
-        const gl = /^((?<mod>\w+_))?(?<level>\w+)_(?<gamemode>\w+)_(?<version>\w+)$/i.exec(l)?.groups
+        l = l.split(' ')[ 0 ].replace(/[^a-z_\d\s\(\)]/gi, '')
+        // if(l.includes('_DEV'))
+        // if(l.startsWith('GC')) this.verbose(1, 'Parsing layer', l)
+        const gl = /^((?<mod>\w+)_)?(?<level>\w+)_(?<gamemode>\w+)_(?<version>V\d+)(.+)?/i.exec(l)?.groups
         // this.verbose(1, 'Parsed layer', gl)
-        if (!gl || Object.keys(gl).length != 3) return;
+        if (!gl || Object.keys(gl).length < 3) return;
 
         if (!gl.level) this.verbose(1, 'Empty level', gl)
 
@@ -1174,11 +1297,12 @@ export default class MapVote extends DiscordBasePlugin {
 
         return {
             name: l.replace(/_/g, ' '),
-            classname: gl.level,
+            classname: l,
             layerid: l,
             map: {
                 name: gl.level
             },
+            mod: gl.mod || '',
             gamemode: gl.gamemode,
             gamemodeType: gl.gamemode,
             version: gl.version,

@@ -329,6 +329,7 @@ true
     "nextLayerSeedingModePlayerCount": 20,
     "seedingGameMode": "Seed",
     "developersAreAdmins": true,
+    "filterByMod": [],
     "minGamemodeEntries": {
         "raas": 2,
         "aas": 2,

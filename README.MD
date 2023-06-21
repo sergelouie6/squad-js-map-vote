@@ -281,6 +281,13 @@ Developers of this plugin are allowed to run admin commands in anychat.
 ```json
 true
 ```
+#### OWIMapLayerGSheetUrl
+###### Description
+Map/Layers Google Sheet URL provided by OWI.
+###### Default
+```json
+"https://docs.google.com/spreadsheets/d/139zvTRo6YnocNM0e4Q_JHHy4gOMG6qiIDWSP2YlMlKM/edit?usp=sharing"
+```
 ###### Timeframe format
 ```javascript
 {

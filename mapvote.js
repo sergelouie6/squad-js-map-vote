@@ -209,6 +209,11 @@ export default class MapVote extends DiscordBasePlugin {
                 description: "Array including mod prefixes",
                 default: []
             },
+            OWIMapLayerGSheetUrl: {
+                required: false,
+                description: "Map/Layers Google Sheet URL provided by OWI",
+                default: "https://docs.google.com/spreadsheets/d/139zvTRo6YnocNM0e4Q_JHHy4gOMG6qiIDWSP2YlMlKM/edit?usp=sharing"
+            },
             timeFrames: {
                 required: false,
                 description: 'Array of timeframes to override options',
@@ -1242,7 +1247,11 @@ export default class MapVote extends DiscordBasePlugin {
             if (!Layers.layers.find((e) => e.layerid == layer.rawName)) Layers.layers.push(new Layer(layer));
         }
 
-        const sheetCsv = (await axios.get('https://docs.google.com/spreadsheets/d/14x8OMhZB1gfYjggKrNvxIAsPJ0IKTQgaKlsvSjnooQc/gviz/tq?tqx=out:csv&sheet=Map%20Layers')).data?.replace(/\"/g, '')?.split('\n') || []//.map((l) => l.split(','))
+        const gSheetUrlSanitized = this.options.OWIMapLayerGSheetUrl
+            .replace(/\/edit\?usp\=sharing$/, '')
+            + '/gviz/tq?tqx=out:csv&sheet=Map%20Layers'
+
+        const sheetCsv = (await axios.get(gSheetUrlSanitized)).data?.replace(/\"/g, '')?.split('\n') || []//.map((l) => l.split(','))
         // this.verbose(1, 'Sheet', sheetCsv)
         sheetCsv.shift();
         // this.verbose(1, 'Sheet', Layers.layers.length, sheetCsv.length, sheetCsv.find(l => l.includes("Manicouagan_RAAS_v1")))

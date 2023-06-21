@@ -8,6 +8,7 @@ import Layer from '../layers/layer.js';
 import fs from 'fs'
 import process from 'process'
 import SocketIOAPI from './socket-io-api.js';
+import util from 'util';
 // import DiscordServerStatus from './discord-server-status.js';
 import Gamedig from 'gamedig';
 
@@ -241,6 +242,7 @@ export default class MapVote extends DiscordBasePlugin {
         this.lastMapUpdate = new Date();
         this.endVotingTimeout = null;
         this.timeout_ps = []
+        this.a2sPlayerCount = 100;
 
         this.onNewGame = this.onNewGame.bind(this);
         this.onPlayerDisconnected = this.onPlayerDisconnected.bind(this);
@@ -260,6 +262,8 @@ export default class MapVote extends DiscordBasePlugin {
         this.debugWebpage = this.debugWebpage.bind(this);
         this.serverQueryData = this.serverQueryData.bind(this);
 
+        this.delay = util.promisify(setTimeout);
+
         this.broadcast = async (msg) => { await this.server.rcon.broadcast(msg); };
         this.warn = async (steamid, msg) => { await this.server.rcon.warn(steamid, msg); };
 
@@ -272,12 +276,13 @@ export default class MapVote extends DiscordBasePlugin {
         this.server.on('NEW_GAME', this.onNewGame);
         this.server.on('CHAT_MESSAGE', this.onChatMessage);
         this.server.on('PLAYER_DISCONNECTED', this.onPlayerDisconnected);
+        // this.server.on('PLAYER_CONNECTED', () => this.beginVoting());
         this.server.on('ROUND_ENDED', this.endVotingGently)
-        setTimeout(() => {
-            this.verbose(1, 'Enabled late listeners.');
-            this.server.on('PLAYER_CONNECTED', this.setSeedingMode);
-            this.server.on('PLAYER_DISCONNECTED', this.setSeedingMode);
-        }, 15 * 1000) // wait 10 seconds to be sure to have an updated player list
+        // setTimeout(() => {
+        //     this.verbose(1, 'Enabled late listeners.');
+        //     this.server.on('PLAYER_CONNECTED', this.setSeedingMode);
+        //     this.server.on('PLAYER_DISCONNECTED', this.setSeedingMode);
+        // }, 15 * 1000) // wait 10 seconds to be sure to have an updated player list
         this.verbose(1, 'Map vote was mounted.');
         this.verbose(1, "Blacklisted Layers/Levels: " + this.options.layerLevelBlacklist.join(', '))
         // await this.checkUpdates();
@@ -300,16 +305,28 @@ export default class MapVote extends DiscordBasePlugin {
     }
 
     async serverQueryData(info) {
+        if (info) {
+            this.a2sPlayerCount = info.raw.numplayers;
+            this.setSeedingMode();
+        }
+        // this.verbose(1, 'A2S Player Count:', this.a2sPlayerCount)
         if (
             this.server.layerHistory[ 0 ].layer &&
             this.server.currentLayer
         ) return;
 
-        const data = await Gamedig.query({
+        let a2sError = false;
+        const queryParams = {
             type: 'squad',
             host: this.server.options.host,
             port: this.server.options.queryPort
+        }
+        // await this.delay(1000);
+        const data = await Gamedig.query(queryParams).catch(e => {
+            this.verbose(2, 'Could not complete A2S query. Error:', queryParams, e)
+            a2sError = e;
         });
+        if (a2sError) return;
         const currentLayerId = data.map;
         // const currentLayer = Layers.layers.find((l) => l.layerid == currentLayerId);
         const currentLayer = Layers.layers.find(l => l.layerid == currentLayerId);
@@ -329,7 +346,7 @@ export default class MapVote extends DiscordBasePlugin {
         // let discordServerStatusPlugin = this.server.plugins.find(p => p instanceof DiscordServerStatus);
         // discordServerStatusPlugin.updateStatus();
 
-        this.verbose(1, 'Current Layer', currentLayer)
+        this.verbose(1, 'Current Layer', currentLayer?.layerid)
     }
 
     debugWebpage() {
@@ -425,44 +442,60 @@ export default class MapVote extends DiscordBasePlugin {
             return (tfStart <= timeNow && timeNow < tfEnd) || (tfStart > tfEnd && ((tfStart <= timeNow && timeNow < tfEnd2) || (tfStart2 <= timeNow && timeNow < tfEnd)))
         }
     }
-    setSeedingMode(isNewGameEvent = false) {
+
+    async setSeedingMode(isNewGameEvent = false, tries = 0) {
         this.options.seedingGameMode = this.options.seedingGameMode.toLowerCase();
         // this.msgBroadcast("[MapVote] Seeding mode active")
         const baseDataExist = this && this.options && this.server && this.server.players;
-        if (baseDataExist) {
-            if (this.options.automaticSeedingMode) {
-                this.verbose(1, "Checking seeding mode");
-                const maxSeedingModePlayerCount = Math.max(this.options.nextLayerSeedingModePlayerCount, this.options.instantSeedingModePlayerCount);
-                if (this.server.players.length >= 1 && this.server.players.length < maxSeedingModePlayerCount) {
-                    if (+(new Date()) - +this.server.layerHistory[ 0 ].time > 30 * 1000) {
-                        const seedingMaps = Layers.layers.filter((l) => l.layerid && l.gamemode.toLowerCase() == this.options.seedingGameMode && !this.options.layerLevelBlacklist.find((fl) => l.layerid.toLowerCase().startsWith(fl.toLowerCase())))
 
-                        const rndMap = randomElement(seedingMaps);
-                        if (this.server.currentLayer) {
-                            if (this.server.currentLayer.gamemode.toLowerCase() != this.options.seedingGameMode) {
-                                if (this.server.players.length <= this.options.instantSeedingModePlayerCount) {
-                                    const newCurrentMap = rndMap.layerid;
-                                    this.verbose(1, 'Going into seeding mode.');
-                                    this.server.rcon.execute(`AdminChangeLayer ${newCurrentMap} `);
-                                }
-                            }
-                        } else this.verbose(1, "Bad data (currentLayer). Seeding mode for current layer skipped to prevent errors.");
+        if (!baseDataExist) {
+            if (tries < 3) {
+                await this.serverQueryData();
+                return this.setSeedingMode(isNewGameEvent, tries++)
 
-                        if (this.server.nextLayer) {
-                            const nextMaps = seedingMaps.filter((l) => (!this.server.currentLayer || l.layerid != this.server.currentLayer.layerid))
-                            let rndMap2;
-                            do rndMap2 = randomElement(nextMaps);
-                            while (rndMap2.layerid == rndMap.layerid)
+            } else {
+                console.log("[MapVote][1] Bad data (this/this.server/this.options). Seeding mode skipped to prevent errors.");
+                return;
+            }
+        }
 
-                            if (this.server.players.length < this.options.nextLayerSeedingModePlayerCount && this.server.nextLayer.gamemode.toLowerCase() != "seed") {
-                                const newNextMap = rndMap2.layerid;
-                                this.server.rcon.execute(`AdminSetNextLayer ${newNextMap} `);
-                            }
-                        } else this.verbose(1, "Bad data (nextLayer). Seeding mode for next layer skipped to prevent errors.");
-                    } else this.verbose(1, `Waiting 30 seconds from mapchange before entering seeding mode`);
-                } else this.verbose(1, `Player count doesn't allow seeding mode (${this.server.players.length}/${maxSeedingModePlayerCount})`);
-            } else this.verbose(1, "Seeding mode disabled in config");
-        } else console.log("[MapVote][1] Bad data (this/this.server/this.options). Seeding mode skipped to prevent errors.");
+        if (this.options.automaticSeedingMode) {
+            this.verbose(1, "Checking seeding mode");
+            const maxSeedingModePlayerCount = Math.max(this.options.nextLayerSeedingModePlayerCount, this.options.instantSeedingModePlayerCount);
+            if (this.a2sPlayerCount >= 1 && this.a2sPlayerCount < maxSeedingModePlayerCount) {
+                // if (+(new Date()) - +this.server.layerHistory[ 0 ].time > 30 * 1000) {
+                const sanitizedLayers = Layers.layers.filter((l) => l.layerid && l.map &&
+                    (this.options.filterByMod.length == 0 || this.options.filterByMod.find(m => m.toLowerCase() == l?.mod?.toLowerCase() || ''))
+                );
+                const seedingMaps = sanitizedLayers.filter((l) => l.layerid && l.gamemode.toLowerCase() == this.options.seedingGameMode && !this.options.layerLevelBlacklist.find((fl) => l.layerid.toLowerCase().startsWith(fl.toLowerCase())))
+
+                const rndMap = randomElement(seedingMaps);
+                if (this.server.currentLayer) {
+                    if (!this.server.currentLayer.gamemode.match(new RegExp(this.options.seedingGameMode, 'i'))) {
+                        if (this.a2sPlayerCount <= this.options.instantSeedingModePlayerCount) {
+                            const newCurrentMap = rndMap.layerid;
+                            this.verbose(1, 'Going into seeding mode.');
+                            this.endVoting();
+                            this.server.rcon.execute(`AdminChangeLayer ${newCurrentMap} `);
+                        }
+                    }
+                } else this.verbose(1, "Bad data (currentLayer). Seeding mode for current layer skipped to prevent errors.");
+
+                if (this.server.nextLayer) {
+                    const nextMaps = seedingMaps.filter((l) => (!this.server.currentLayer || l.layerid != this.server.currentLayer.layerid))
+                    let rndMap2;
+                    do rndMap2 = randomElement(nextMaps);
+                    while (rndMap2.layerid == rndMap.layerid)
+
+                    if (this.a2sPlayerCount < this.options.nextLayerSeedingModePlayerCount && this.server.nextLayer.gamemode.toLowerCase() != "seed") {
+                        const newNextMap = rndMap2.layerid;
+                        this.endVoting();
+                        this.server.rcon.execute(`AdminSetNextLayer ${newNextMap} `);
+                    }
+                } else this.verbose(1, "Bad data (nextLayer). Seeding mode for next layer skipped to prevent errors.");
+                // } else this.verbose(1, `Waiting 30 seconds from mapchange before entering seeding mode`);
+            } else this.verbose(1, `Player count doesn't allow seeding mode (${this.a2sPlayerCount}/${maxSeedingModePlayerCount})`);
+        } else this.verbose(1, "Seeding mode disabled in config");
     }
 
     async onChatMessage(info) {
@@ -656,16 +689,16 @@ export default class MapVote extends DiscordBasePlugin {
         // this.tallies.push(0);
 
         const translations = {
-            'United States Army': "USA",
-            'United States Marine Corps': "USMC",
-            'Russian Ground Forces': "RUS",
-            'British Army': "GB",
-            'British Armed Forces': "GB",
-            'Canadian Army': "CAF",
-            'Australian Defence Force': "AUS",
-            'Irregular Militia Forces': "MIL",
-            'Middle Eastern Alliance': "MEA",
-            'Insurgent Forces': "INS",
+            // 'United States Army': "USA",
+            // 'United States Marine Corps': "USMC",
+            // 'Russian Ground Forces': "RUS",
+            // 'British Army': "GB",
+            // 'British Armed Forces': "GB",
+            // 'Canadian Army': "CAF",
+            // 'Australian Defence Force': "AUS",
+            // 'Irregular Militia Forces': "MIL",
+            // 'Middle Eastern Alliance': "MEA",
+            // 'Insurgent Forces': "INS",
             'Unknown': "Unk"
         }
 
@@ -847,7 +880,8 @@ export default class MapVote extends DiscordBasePlugin {
 
 
         if (playerCount < minPlayers && !force) {
-            this.autovotestart = setTimeout(() => { this.beginVoting(force, steamid, cmdLayers) }, 60 * 1000)
+            // this.autovotestart = setTimeout(() => { this.beginVoting(force, steamid, cmdLayers) }, 60 * 1000)
+            this.server.once('PLAYER_CONNECTED', () => this.beginVoting());
             return;
         }
 
@@ -983,19 +1017,6 @@ export default class MapVote extends DiscordBasePlugin {
         //await this.msgBroadcast(`Current winner${winners.length > 1 ? "s" : ""}: ${winners.join(", ")}`);
     }
     formatFancyLayer(layer) {
-        const translations = {
-            'United States Army': "USA",
-            'United States Marine Corps': "USMC",
-            'Russian Ground Forces': "RUS",
-            'British Army': "GB",
-            'British Armed Forces': "GB",
-            'Canadian Army': "CAF",
-            'Australian Defence Force': "AUS",
-            'Irregular Militia Forces': "MIL",
-            'Middle Eastern Alliance': "MEA",
-            'Insurgent Forces': "INS",
-            'Unknown': "Unk"
-        }
         const factionString = getTranslation(layer.teams[ 0 ]) + "-" + getTranslation(layer.teams[ 1 ]);
 
         const helis = layer.teams[ 0 ].numberOfHelicopters + layer.teams[ 1 ].numberOfHelicopters
@@ -1329,4 +1350,18 @@ function randomElement(array) {
 
 function toMils(min) {
     return min * 60 * 1000;
+}
+
+const translations = {
+    'United States Army': "USA",
+    'United States Marine Corps': "USMC",
+    'Russian Ground Forces': "RUS",
+    'British Army': "GB",
+    'British Armed Forces': "GB",
+    'Canadian Army': "CAF",
+    'Australian Defence Force': "AUS",
+    'Irregular Militia Forces': "MIL",
+    'Middle Eastern Alliance': "MEA",
+    'Insurgent Forces': "INS",
+    'Unknown': "Unk"
 }

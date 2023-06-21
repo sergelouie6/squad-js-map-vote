@@ -1362,15 +1362,15 @@ function toMils(min) {
 }
 
 const translations = {
-    'United States Army': "USA",
-    'United States Marine Corps': "USMC",
-    'Russian Ground Forces': "RUS",
-    'British Army': "GB",
-    'British Armed Forces': "GB",
-    'Canadian Army': "CAF",
-    'Australian Defence Force': "AUS",
-    'Irregular Militia Forces': "MIL",
-    'Middle Eastern Alliance': "MEA",
-    'Insurgent Forces': "INS",
+    // 'United States Army': "USA",
+    // 'United States Marine Corps': "USMC",
+    // 'Russian Ground Forces': "RUS",
+    // 'British Army': "GB",
+    // 'British Armed Forces': "GB",
+    // 'Canadian Army': "CAF",
+    // 'Australian Defence Force': "AUS",
+    // 'Irregular Militia Forces': "MIL",
+    // 'Middle Eastern Alliance': "MEA",
+    // 'Insurgent Forces': "INS",
     'Unknown': "Unk"
 }

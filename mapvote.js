@@ -833,7 +833,7 @@ export default class MapVote extends DiscordBasePlugin {
                     this.warn(steamid, `Could not start a vote due to randomized layer list being filtered to 0`)
                     return;
                 }
-                this.warn(steamid, `Iteration layers count: ${iterationLayersCount.join('; ')}`);
+                // this.warn(steamid, `Iteration layers count: ${iterationLayersCount.join('; ')}`);
             }
             else if (steamid) {
                 this.warn(steamid, "You cannot start a vote with more than " + maxOptions + " options");
@@ -1263,41 +1263,45 @@ export default class MapVote extends DiscordBasePlugin {
         // this.verbose(1, 'RCON Layers', rconLayers.length, this.mapLayer(rconLayers[ 1 ]))
         if (rconLayers.length > 0) {
             for (const layer of rconLayers) {
-                if (!Layers.layers.find((e) => e?.layerid == layer)) {
-                    let newLayer = this.mapLayer(layer);
-                    // if(layer.startsWith('GC')) this.verbose(1, 'layer', newLayer)
-                    if (!newLayer) continue;
+                const existingLayer = Layers.layers.find((e,) => e?.layerid == layer);
 
-                    if (sheetCsv.length > 0) {
-                        const csvLayer = sheetCsv.find(l => l == newLayer?.layerid)?.split(',');
-                        // console.log(newLayer.layerid, csvLayer[ 2 ]);
-                        if (csvLayer) {
-                            if (csvLayer[ 6 ]) newLayer.teams[ 0 ].faction = csvLayer[ 6 ]
-                            newLayer.teams[ 0 ].name = newLayer.teams[ 0 ].faction
-                            if (csvLayer[ 9 ]) newLayer.teams[ 0 ].numberOfTanks = parseNumberOfAssets(csvLayer[ 9 ])
-                            if (csvLayer[ 13 ]) newLayer.teams[ 0 ].numberOfHelicopters = parseNumberOfAssets(csvLayer[ 13 ])
-                            if (csvLayer[ 5 ]) newLayer.teams[ 0 ].commander = csvLayer[ 5 ].toLowerCase() == 'yes'
+                let newLayer = existingLayer || this.mapLayer(layer);
+                // if(layer.startsWith('GC')) this.verbose(1, 'layer', newLayer)
+                if (!newLayer) continue;
 
-                            if (csvLayer[ 10 ]) newLayer.teams[ 1 ].faction = csvLayer[ 10 ]
-                            newLayer.teams[ 1 ].name = newLayer.teams[ 1 ].faction
-                            newLayer.teams[ 1 ].numberOfTanks = newLayer.teams[ 0 ].numberOfTanks
-                            newLayer.teams[ 1 ].numberOfHelicopters = newLayer.teams[ 0 ].numberOfHelicopters
-                            newLayer.teams[ 1 ].commander = newLayer.teams[ 0 ].commander
-                        }
+                if (sheetCsv.length > 0) {
+                    const csvLayer = sheetCsv.find(l => l.includes(newLayer?.layerid))?.split(',');
+                    // this.verbose(1,'Newlayer', newLayer)
+                    // console.log(newLayer.layerid, csvLayer);
+                    if (csvLayer) {
+                        if (csvLayer[ 8 ]) newLayer.teams[ 0 ].faction = csvLayer[ 8 ]
+                        newLayer.teams[ 0 ].name = newLayer.teams[ 0 ].faction
+                        if (csvLayer[ 10 ]) newLayer.teams[ 0 ].numberOfTanks = parseNumberOfAssets(csvLayer[ 10 ])
+                        if (csvLayer[ 11 ]) newLayer.teams[ 0 ].numberOfHelicopters = parseNumberOfAssets(csvLayer[ 11 ])
+                        if (csvLayer[ 7 ]) newLayer.teams[ 0 ].commander = csvLayer[ 7 ].toLowerCase() == 'yes'
+
+                        if (csvLayer[ 12 ]) newLayer.teams[ 1 ].faction = csvLayer[ 12 ]
+                        newLayer.teams[ 1 ].name = newLayer.teams[ 1 ].faction
+                        newLayer.teams[ 1 ].numberOfTanks = newLayer.teams[ 0 ].numberOfTanks
+                        newLayer.teams[ 1 ].numberOfHelicopters = newLayer.teams[ 0 ].numberOfHelicopters
+                        newLayer.teams[ 1 ].commander = newLayer.teams[ 0 ].commander
                     }
-
-                    if (Layers._layers && Layers._layers instanceof Map)
-                        Layers._layers.set(newLayer.layerid, newLayer);
-                    else
-                        Layers.layers.push(newLayer);
                 }
+
+                if (Layers._layers && Layers._layers instanceof Map)
+                    Layers._layers.set(newLayer.layerid, newLayer);
+                else
+                    Layers.layers.push(newLayer);
             }
         }
 
         this.verbose(1, 'Layer list updated', Layers.layers.length, 'total layers');
         // this.verbose(1, 'Layers', Layers.layers.filter(l => l.layerid.startsWith('GC')));
+
         function parseNumberOfAssets(string) {
-            return /^x(\d)/.exec(string)[ 1 ]
+            if (string.trim() == '') return 0;
+            console.log('Assets', string)
+            return /^x?(\d+)/.exec(string)[ 1 ]
         }
     }
 

@@ -336,6 +336,7 @@ Map/Layers Google Sheet URL provided by OWI.
     "nextLayerSeedingModePlayerCount": 20,
     "seedingGameMode": "Seed",
     "developersAreAdmins": true,
+    "OWIMapLayerGSheetUrl": "https://docs.google.com/spreadsheets/d/139zvTRo6YnocNM0e4Q_JHHy4gOMG6qiIDWSP2YlMlKM/edit?usp=sharing",
     "filterByMod": [],
     "minGamemodeEntries": {
         "raas": 2,

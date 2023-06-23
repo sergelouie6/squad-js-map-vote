@@ -8,9 +8,12 @@ import Layer from '../layers/layer.js';
 import fs from 'fs'
 import process from 'process'
 import SocketIOAPI from './socket-io-api.js';
+import DBLog from './db-log.js';
 import util from 'util';
 // import DiscordServerStatus from './discord-server-status.js';
 import Gamedig from 'gamedig';
+import Sequelize, { NOW } from 'sequelize';
+const { DataTypes } = Sequelize;
 
 export default class MapVote extends DiscordBasePlugin {
     static get description() {
@@ -266,13 +269,71 @@ export default class MapVote extends DiscordBasePlugin {
         this.getLayersFromStringId = this.getLayersFromStringId.bind(this);
         this.debugWebpage = this.debugWebpage.bind(this);
         this.serverQueryData = this.serverQueryData.bind(this);
+        this.getTranslation = this.getTranslation.bind(this);
+        this.createModel = this.createModel.bind(this);
 
         this.delay = util.promisify(setTimeout);
+
+        this.DBLogPlugin;
+
+        this.models = {};
 
         this.broadcast = async (msg) => { await this.server.rcon.broadcast(msg); };
         this.warn = async (steamid, msg) => { await this.server.rcon.warn(steamid, msg); };
 
         process.on('uncaughtException', this.savePersistentData);
+    }
+
+    createModel(name, schema) {
+        if (!this.DBLogPlugin) return;
+        this.models[ name ] = this.DBLogPlugin.options.database.define(`MapVote_${name}`, schema, {
+            timestamps: false
+        });
+        this.verbose(1,'DBLogOptions', this.DBLogPlugin.options)
+    }
+
+    async prepareToMount() {
+        this.DBLogPlugin = this.server.plugins.find(p => p instanceof DBLog);
+        if (!this.DBLogPlugin) return;
+
+        await this.createModel('PlayerVotes', {
+            id: {
+                type: DataTypes.INTEGER,
+                primaryKey: true,
+                autoIncrement: true
+            },
+            server: {
+                type: DataTypes.INTEGER
+            },
+            level: {
+                type: DataTypes.STRING
+            },
+            gamemode: {
+                type: DataTypes.STRING
+            },
+            version: {
+                type: DataTypes.INTEGER
+            },
+            layerid: {
+                type: DataTypes.STRING
+            },
+            playerSteamID: {
+                type: DataTypes.STRING
+            },
+            mod: {
+                type: DataTypes.STRING,
+                defaultValue: ""
+            },
+            match: {
+                type: DataTypes.INTEGER
+            },
+            created_at: {
+                type: DataTypes.DATE,
+                defaultValue: DataTypes.NOW
+            }
+        });
+
+        await this.models.PlayerVotes.sync();
     }
 
     async mount() {
@@ -748,7 +809,7 @@ export default class MapVote extends DiscordBasePlugin {
                         && !(this.options.applyBlacklistToWhitelist && this.options.layerLevelBlacklist.find((fl) => this.getLayersFromStringId(fl).map((e) => e.layerid).includes(l.layerid)))
                     )
                 )
-                && !(this.options.factionsBlacklist.find((f) => [ getTranslation(l.teams[ 0 ]), getTranslation(l.teams[ 1 ]) ].includes(f)))
+                && !(this.options.factionsBlacklist.find((f) => [ this.getTranslation(l.teams[ 0 ]), this.getTranslation(l.teams[ 1 ]) ].includes(f)))
             );
             for (let i = 1; i <= Math.min(optionAmount, all_layers.length); i++) {
                 const needMoreRAAS = !bypassRaasFilter && rnd_layers.filter((l) => l.gamemode.toUpperCase() === 'RAAS').length < this.options.minRaasEntries;
@@ -759,7 +820,7 @@ export default class MapVote extends DiscordBasePlugin {
                     rnd_layers.push(l);
                     this.nominations[ i ] = l.layerid
                     this.tallies[ i ] = 0;
-                    this.factionStrings[ i ] = getTranslation(l.teams[ 0 ]) + "-" + getTranslation(l.teams[ 1 ]);
+                    this.factionStrings[ i ] = this.getTranslation(l.teams[ 0 ]) + "-" + this.getTranslation(l.teams[ 1 ]);
                 }
             }
             // if (!bypassRaasFilter && this.options.gamemodeWhitelist.includes("RAAS") && rnd_layers.filter((l) => l.gamemode === 'RAAS').length < Math.floor(maxOptions / 2)) this.populateNominations();
@@ -790,16 +851,17 @@ export default class MapVote extends DiscordBasePlugin {
                                 )
                             ) || cls[ 2 ]
                         )
-                        && (
-                            (cls[ 0 ] == "*" || l.layerid.toLowerCase().startsWith(cls[ 0 ]))
-                            || (cls[ 0 ].toLowerCase().startsWith('f:') && [ getTranslation(l.teams[ 0 ]), getTranslation(l.teams[ 1 ]) ].includes(cls[ 0 ].substring(2).toUpperCase()))
-                        )
-                        && (l.gamemode.toLowerCase().startsWith(cls[ 1 ]) || (!cls[ 1 ] && this.options.gamemodeWhitelist.includes(l.gamemode.toUpperCase())))
-                        && (!cls[ 2 ] || l.version.toLowerCase().startsWith("v" + cls[ 2 ].replace(/v/gi, '')))
-                        // && !(this.options.factionsBlacklist.find((f) => [ getTranslation(l.teams[ 0 ]), getTranslation(l.teams[ 1 ]) ].includes(f)))
+                        // && (
+                        //     (cls[ 0 ] == "*" || l.layerid.toLowerCase().startsWith(cls[ 0 ]))
+                        //     || (cls[ 0 ].toLowerCase().startsWith('f:') && [ this.getTranslation(l.teams[ 0 ]), this.getTranslation(l.teams[ 1 ]) ].includes(cls[ 0 ].substring(2).toUpperCase()))
+                        // )
+                        // && (l.gamemode.toLowerCase().startsWith(cls[ 1 ]) || (!cls[ 1 ] && this.options.gamemodeWhitelist.includes(l.gamemode.toUpperCase())))
+                        // && (!cls[ 2 ] || l.version.toLowerCase().startsWith("v" + cls[ 2 ].replace(/v(0*)/i, '')))
+                        // // && !(this.options.factionsBlacklist.find((f) => [ this.getTranslation(l.teams[ 0 ]), this.getTranslation(l.teams[ 1 ]) ].includes(f)))
+                        && this.getLayersFromStringId(cl, l)
                         && (cls[ 2 ] || !(
                             this.options.layerLevelBlacklist.find((fl) => this.getLayersFromStringId(fl).map((e) => e.layerid).includes(l.layerid))
-                            || this.options.factionsBlacklist.find((f) => [ getTranslation(l.teams[ 0 ]), getTranslation(l.teams[ 1 ]) ].includes(f))
+                            || this.options.factionsBlacklist.find((f) => [ this.getTranslation(l.teams[ 0 ]), this.getTranslation(l.teams[ 1 ]) ].includes(f))
                         ))
                     ));
                     iterationLayersCount.push(fLayers.length);
@@ -824,7 +886,7 @@ export default class MapVote extends DiscordBasePlugin {
                         rnd_layers.push(l);
                         this.nominations[ i ] = l.layerid
                         this.tallies[ i ] = 0;
-                        this.factionStrings[ i ] = getTranslation(l.teams[ 0 ]) + "-" + getTranslation(l.teams[ 1 ]);
+                        this.factionStrings[ i ] = this.getTranslation(l.teams[ 0 ]) + "-" + this.getTranslation(l.teams[ 1 ]);
                         i++;
                     }
                 }
@@ -860,15 +922,16 @@ export default class MapVote extends DiscordBasePlugin {
         if (this.nominations[ 1 ] != "")
             this.server.rcon.execute(`AdminSetNextLayer ${this.nominations[ 1 ]} `);
 
-        function getTranslation(layer) {
-            if (translations[ layer.faction ]) return translations[ layer.faction ]
-            else if (layer.faction) {
-                const f = layer.faction.split(' ');
-                let fTag = "";
-                f.forEach((e) => { fTag += e[ 0 ] });
-                return fTag.toUpperCase();
-            } else return "Unknown"
-        }
+    }
+
+    getTranslation(layer) {
+        if (translations[ layer.faction ]) return translations[ layer.faction ]
+        else if (layer.faction) {
+            const f = layer.faction.split(' ');
+            let fTag = "";
+            f.forEach((e) => { fTag += e[ 0 ] });
+            return fTag.toUpperCase();
+        } else return "Unknown"
     }
 
     //checks if there are enough players to start voting, if not binds itself to player connected
@@ -1022,7 +1085,7 @@ export default class MapVote extends DiscordBasePlugin {
         //await this.msgBroadcast(`Current winner${winners.length > 1 ? "s" : ""}: ${winners.join(", ")}`);
     }
     formatFancyLayer(layer) {
-        const factionString = getTranslation(layer.teams[ 0 ]) + "-" + getTranslation(layer.teams[ 1 ]);
+        const factionString = this.getTranslation(layer.teams[ 0 ]) + "-" + this.getTranslation(layer.teams[ 1 ]);
 
         const helis = layer.teams[ 0 ].numberOfHelicopters + layer.teams[ 1 ].numberOfHelicopters
         const tanks = layer.teams[ 0 ].numberOfTanks + layer.teams[ 1 ].numberOfTanks
@@ -1037,29 +1100,35 @@ export default class MapVote extends DiscordBasePlugin {
             .replace(/\{map_version\}/i, layer.version)
             .replace(/\{factions\}/i, factionString)
             .replace(/\{main_assets\}/i, vehiclesString)
-
-        function getTranslation(t) {
-            if (translations[ t.faction ]) return translations[ t.faction ]
-            else {
-                const f = t.faction.split(' ');
-                let fTag = "";
-                f.forEach((e) => { fTag += e[ 0 ] });
-                return fTag.toUpperCase();
-            }
-        }
     }
 
-    getLayersFromStringId(stringid) {
+    getLayersFromStringId(stringid, findLayer) {
+        this.options.gamemodeWhitelist = this.options.gamemodeWhitelist.map(e => e.toUpperCase());
         const cls = stringid.toLowerCase().split('_');
 
         let ret;
+        const findOrFilter = findLayer ? 'find' : 'filter';
 
         if (stringid.match(/^\/.+\/$/)) {
             const reg = new RegExp(stringid.replace(/^\//, '').replace(/\/.{0,}$/, ''), 'i')
-            ret = Layers.layers.filter(l => l.layerid.match(reg))
+            ret = Layers.layers[ findOrFilter ](l => l.layerid.match(reg))
         } else {
-            if (cls.length <= 3) ret = Layers.layers.filter((l) => ((cls[ 0 ] == "*" || l.layerid.toLowerCase().startsWith(cls[ 0 ])) && (l.gamemode.toLowerCase().startsWith(cls[ 1 ]) || (!cls[ 1 ] && [ 'RAAS', 'AAS', 'INVASION' ].includes(l.gamemode.toUpperCase()))) && (!cls[ 2 ] || parseInt(l.version.toLowerCase().replace(/v/gi, '')) == parseInt(cls[ 2 ].replace(/v/gi, '')))));
-            else ret = Layers.layers.filter((l) => ((cls[ 0 ] == "*" || l.mod?.toLowerCase().startsWith(cls[ 0 ].toLowerCase())) && (cls[ 1 ] == "*" || l.map.name.toLowerCase().startsWith(cls[ 1 ])) && (l.gamemode.toLowerCase().startsWith(cls[ 2 ]) || (!cls[ 2 ] && [ 'RAAS', 'AAS', 'INVASION' ].includes(l.gamemode.toUpperCase()))) && (!cls[ 3 ] || parseInt(l.version.toLowerCase().replace(/v/gi, '')) == parseInt(cls[ 3 ].replace(/v/gi, ''))) && (!cls[ 4 ] || cls[ 4 ] == l.layerid.split('_')[ 4 ]?.toLowerCase())))
+            if (cls.length <= 3) ret = Layers.layers[ findOrFilter ]((l) => (
+                (
+                    !findLayer || findLayer.layerid == l.layerid
+                )
+                && (
+                    (cls[ 0 ] == "*" || l.layerid.toLowerCase().startsWith(cls[ 0 ]))
+                    || (cls[ 0 ].startsWith('f:') && [ this.getTranslation(l.teams[ 0 ]), this.getTranslation(l.teams[ 1 ]) ].includes(cls[ 0 ].substring(2).toUpperCase()))
+                )
+                && (
+                    l.gamemode.toLowerCase().startsWith(cls[ 1 ]) || (!cls[ 1 ] && this.options.gamemodeWhitelist.includes(l.gamemode.toUpperCase()))
+                )
+                && (
+                    !cls[ 2 ] || parseInt(l.version.replace(/v(0*)/i, '')) == parseInt(cls[ 2 ].replace(/v(0*)/i, ''))
+                )
+            ));
+            else ret = Layers.layers[ findOrFilter ]((l) => ((cls[ 0 ] == "*" || l.mod?.toLowerCase().startsWith(cls[ 0 ].toLowerCase())) && (cls[ 1 ] == "*" || l.map.name.toLowerCase().startsWith(cls[ 1 ])) && (l.gamemode.toLowerCase().startsWith(cls[ 2 ]) || (!cls[ 2 ] && [ 'RAAS', 'AAS', 'INVASION' ].includes(l.gamemode.toUpperCase()))) && (!cls[ 3 ] || parseInt(l.version.toLowerCase().replace(/v(0*)/i, '')) == parseInt(cls[ 3 ].replace(/v(0*)/i, ''))) && (!cls[ 4 ] || cls[ 4 ] == l.layerid.split('_')[ 4 ]?.toLowerCase())))
         }
         // this.verbose(1,"layers from string",stringid,cls,ret)
         return ret;
@@ -1103,6 +1172,33 @@ export default class MapVote extends DiscordBasePlugin {
         if (previousVote !== undefined)
             this.tallies[ previousVote ] -= 1;
         await this.warn(steamID, `Registered vote: ${this.nominations[ nominationIndex ].replace(/\_/gi, ' ').replace(/\sv\d{1,2}/gi, '')} ${this.factionStrings[ nominationIndex ]} ` + (this.options.hideVotesCount ? `` : `(${this.tallies[ nominationIndex ]} votes)`));
+
+        if (!this.DBLogPlugin) return;
+
+        const votedLayer = Layers.layers.find(l => l.layerid == this.nominations[ nominationIndex ]);
+        const matchId = this.DBLogPlugin?.match?.id || 0;
+        this.verbose(1, 'DBLogPlugin', this.DBLogPlugin)
+
+        await this.models.PlayerVotes.destroy({
+            where: {
+                match: +matchId,
+                playerSteamID: steamID
+            }
+        })
+
+        await this.models.PlayerVotes.create({
+            server: +this.options.overrideServerID || +this.server.id,
+            level: votedLayer.map.name,
+            gamemode: votedLayer.gamemode,
+            version: +votedLayer.version.replace(/v(0*)/, ''),
+            layerid: votedLayer.layerid,
+            mod: votedLayer.mod || '',
+            match: +matchId,
+            playerSteamID: steamID
+        }).catch(e => {
+            this.verbose(1, 'Could not create player vote record in database. Error:', e)
+        })
+
         // await this.msgDirect(steamID, `Registered vote`);// ${this.nominations[ nominationIndex ]} ${this.factionStrings[ nominationIndex ]} (${this.tallies[ nominationIndex ]} votes)`);
         // await this.msgDirect(steamID, `${this.nominations[ nominationIndex ]} (${this.tallies[ nominationIndex ]} votes)`);
         // await this.msgDirect(steamID, `${this.factionStrings[ nominationIndex ]}`);
@@ -1290,7 +1386,7 @@ export default class MapVote extends DiscordBasePlugin {
 
                 if (Layers._layers && Layers._layers instanceof Map)
                     Layers._layers.set(newLayer.layerid, newLayer);
-                else
+                else if (!existingLayer)
                     Layers.layers.push(newLayer);
             }
         }

@@ -35,7 +35,7 @@ The `MapVote` plugin for squad js based on the original version https://github.c
 
 ### DBLog
 Configure the DBLog SquadJS plugin, nothing more is required.
-####Available Tables
+#### Available Tables
 - MapVote_PlayerVotes
 
 ### Options

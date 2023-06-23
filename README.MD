@@ -33,6 +33,10 @@ The `MapVote` plugin for squad js based on the original version https://github.c
 ##### Vote by map + mode, mixed
 - `!vote start yeh_raas gor_raas lash_inv gor albas_inv` - Starts a vote with X maps, X modes
 
+### DBLog
+Configure the DBLog SquadJS plugin, nothing more is required.
+####Available Tables
+- MapVote_PlayerVotes
 
 ### Options
 #### commandPrefix

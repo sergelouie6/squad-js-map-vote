@@ -304,6 +304,36 @@ Map/Layers Google Sheet URL provided by OWI.
     }
 }
 ```
+### Quick start configuration
+```json
+{
+    "plugin": "MapVote",
+    "enabled": true,
+    "discordClient": "discord",
+    "entriesAmount": 6,
+    "automaticVoteStart": true,
+    "minPlayersForVote": 30,
+    "voteWaitTimeFromMatchStart": 10,
+    "voteBroadcastInterval": 7,
+    "numberRecentMapsToExlude": 4,
+    "automaticSeedingMode": false,
+    "gamemodeWhitelist": [ "AAS", "RAAS", "Invasion" ],
+    "layerLevelBlacklist": [ "BlackCoast_Seed" ],
+    "layerLevelWhitelist": [ "Yeho", "Gorodok", "Mutaha", "Narva", "Tallil" ],
+    "applyBlacklistToWhitelist": true,
+    "factionsBlacklist": [ "CAF", "INS" ],
+    "logToDiscord": true,
+    "channelID": "112233445566778899",
+    "persistentDataFile": "",
+    "timezone": 2,
+    "filterByMod": [],
+    "minGamemodeEntries": {
+        "raas": 2,
+        "aas": 2,
+        "invasion": 0
+    }
+}
+```
 ### Example configuration
 ```json
 {
@@ -312,7 +342,7 @@ Map/Layers Google Sheet URL provided by OWI.
     "discordClient": "discord",
     "entriesAmount": 6,
     "entryFormat": "{map_name} {gamemode} {map_version} {factions} {main_assets}",
-    "automaticVoteStart": true,
+    "automaticVoteStart": false,
     "votingDuration": 0,
     "minPlayersForVote": 30,
     "voteWaitTimeFromMatchStart": 10,
@@ -340,6 +370,7 @@ Map/Layers Google Sheet URL provided by OWI.
     "nextLayerSeedingModePlayerCount": 20,
     "seedingGameMode": "Seed",
     "developersAreAdmins": true,
+    "OWIMapLayerGSheetUrl": "https://docs.google.com/spreadsheets/d/139zvTRo6YnocNM0e4Q_JHHy4gOMG6qiIDWSP2YlMlKM/edit?usp=sharing",
     "filterByMod": [],
     "minGamemodeEntries": {
         "raas": 2,

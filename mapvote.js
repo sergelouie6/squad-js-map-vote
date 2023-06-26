@@ -289,7 +289,7 @@ export default class MapVote extends DiscordBasePlugin {
         this.models[ name ] = this.DBLogPlugin.options.database.define(`MapVote_${name}`, schema, {
             timestamps: false
         });
-        this.verbose(1,'DBLogOptions', this.DBLogPlugin.options)
+        // this.verbose(1,'DBLogOptions', this.DBLogPlugin.options)
     }
 
     async prepareToMount() {
@@ -658,6 +658,9 @@ export default class MapVote extends DiscordBasePlugin {
                 if (!isAdmin) return;
                 this.server.rcon.execute(`AdminEndMatch`)
                 return;
+            case "simulate":
+                this.populateNominations(steamID, [], false, 10, true)
+                return;
             case "help": //displays available commands
                 let msg = "";
                 msg += (`!vote\n > choices\n > results\n`);
@@ -748,7 +751,7 @@ export default class MapVote extends DiscordBasePlugin {
     }
 
     //TODO: right now if version is set to "Any" no caf layers will be selected
-    populateNominations(steamid = null, cmdLayers = [], bypassRaasFilter = false, tries = 10) //gets nomination strings from layer options
+    populateNominations(steamid = null, cmdLayers = [], bypassRaasFilter = false, tries = 10, simulate = false) //gets nomination strings from layer options
     {
         this.options.gamemodeWhitelist.forEach((e, k, a) => a[ k ] = e.toUpperCase());
         // this.nominations.push(builtLayerString);
@@ -768,9 +771,11 @@ export default class MapVote extends DiscordBasePlugin {
             'Unknown': "Unk"
         }
 
-        this.nominations = [];
-        this.tallies = [];
-        this.factionStrings = [];
+        if (!simulate) {
+            this.nominations = [];
+            this.tallies = [];
+            this.factionStrings = [];
+        }
         let rnd_layers = [];
 
         const sanitizedLayers = Layers.layers.filter((l) => l.layerid && l.map &&
@@ -779,7 +784,8 @@ export default class MapVote extends DiscordBasePlugin {
         const maxOptions = this.options.showRerollOption ? 20 : 21;
         const optionAmount = Math.min(maxOptions, this.options.entriesAmount);
 
-        const recentlyPlayedMaps = this.objArrToValArr(this.server.layerHistory.slice(0, this.options.numberRecentMapsToExlude), "layer", "map", "name");
+        // const recentlyPlayedMaps = this.objArrToValArr(this.server.layerHistory.slice(0, this.options.numberRecentMapsToExlude), "layer", "map", "name");
+        const recentlyPlayedMaps = this.server.layerHistory.slice(0, this.options.numberRecentMapsToExlude).map(l => l.layer?.map?.name);
         this.verbose(1, "Recently played maps: " + recentlyPlayedMaps.join(', '));//recentlyPlayedMaps.filter((l) => l && l.map && l.map.name).map((l) => l.map.name).join(', '))
 
         const isRandomVote = !cmdLayers || cmdLayers.length == 0;
@@ -794,113 +800,84 @@ export default class MapVote extends DiscordBasePlugin {
         }
         // this.warn(steamid, `Random vote: ${isRandomVote}: ${cmdLayers.join('; ')}`)
 
-        if (false && isRandomVote) {
-            // this.populateNominations(steamid,cmdLayers,bypassRaasFilter,)
+        if (cmdLayers.length == 1) while (cmdLayers.length < optionAmount) cmdLayers.push(cmdLayers[ 0 ])
 
+        let iterationLayersCount = [];
 
-            const all_layers = sanitizedLayers.filter((l) =>
-                this.options.gamemodeWhitelist.includes(l.gamemode.toUpperCase()) &&
-                ![ this.server.currentLayer ? this.server.currentLayer.map.name : null, ...recentlyPlayedMaps ].includes(l.map.name) &&
-                (
-                    (this.options.layerFilteringMode.toLowerCase() == "blacklist" && !this.options.layerLevelBlacklist.find((fl) => this.getLayersFromStringId(fl).map((e) => e.layerid).includes(l.layerid))) ||
+        if (cmdLayers.length <= maxOptions) {
+            let i = 1;
+            for (let cl of cmdLayers) {
+                const cls = cl.toLowerCase().split('_');
+                const fLayers = sanitizedLayers.filter((l) => (
+                    ((cls[ 1 ] && cls[ 1 ] != '*') || rnd_layers.filter(l2 => l2.map.name == l.map.name).length < this.options.allowedSameMapEntries) &&
+                    (![ this.server.currentLayer?.map?.name, ...recentlyPlayedMaps ].includes(l.map.name) || cls[ 2 ]) &&
                     (
-                        this.options.layerFilteringMode.toLowerCase() == "whitelist"
-                        && this.options.layerLevelWhitelist.find((fl) => this.getLayersFromStringId(fl).map((e) => e.layerid).includes(l.layerid))
-                        && !(this.options.applyBlacklistToWhitelist && this.options.layerLevelBlacklist.find((fl) => this.getLayersFromStringId(fl).map((e) => e.layerid).includes(l.layerid)))
-                    )
-                )
-                && !(this.options.factionsBlacklist.find((f) => [ this.getTranslation(l.teams[ 0 ]), this.getTranslation(l.teams[ 1 ]) ].includes(f)))
-            );
-            for (let i = 1; i <= Math.min(optionAmount, all_layers.length); i++) {
-                const needMoreRAAS = !bypassRaasFilter && rnd_layers.filter((l) => l.gamemode.toUpperCase() === 'RAAS').length < this.options.minRaasEntries;
-                let l, maxtries = 20;
-                do l = randomElement(needMoreRAAS ? all_layers.filter((l) => l.gamemode.toLowerCase() == "raas") : all_layers); while ((rnd_layers.find(lf => lf.layerid == l.layerid) || rnd_layers.filter(lf => lf.map.name == l.map.name).length > (this.options.allowedSameMapEntries - 1)) && --maxtries >= 0)
-                if (maxtries > 0 && l) {
-                    // this.verbose(1,"Testing layer",l, maxtries);
-                    rnd_layers.push(l);
-                    this.nominations[ i ] = l.layerid
-                    this.tallies[ i ] = 0;
-                    this.factionStrings[ i ] = this.getTranslation(l.teams[ 0 ]) + "-" + this.getTranslation(l.teams[ 1 ]);
-                }
-            }
-            // if (!bypassRaasFilter && this.options.gamemodeWhitelist.includes("RAAS") && rnd_layers.filter((l) => l.gamemode === 'RAAS').length < Math.floor(maxOptions / 2)) this.populateNominations();
-            if (this.nominations.length == 0) {
-                if (--tries > 0) this.populateNominations(steamid, cmdLayers, bypassRaasFilter, tries);
-                else this.warn("")
-                return;
-            }
-        } else {
-            if (cmdLayers.length == 1) while (cmdLayers.length < optionAmount) cmdLayers.push(cmdLayers[ 0 ])
-
-            let iterationLayersCount = [];
-
-            if (cmdLayers.length <= maxOptions) {
-                let i = 1;
-                for (let cl of cmdLayers) {
-                    const cls = cl.toLowerCase().split('_');
-                    const fLayers = sanitizedLayers.filter((l) => (
-                        ((cls[ 1 ] && cls[ 1 ] != '*') || rnd_layers.filter(l2 => l2.map.name == l.map.name).length < this.options.allowedSameMapEntries) &&
-                        (![ this.server.currentLayer ? this.server.currentLayer.map.name : null, ...recentlyPlayedMaps ].includes(l.map.name) || cls[ 2 ]) &&
                         (
+                            (this.options.layerFilteringMode.toLowerCase() == "blacklist" && !this.options.layerLevelBlacklist.find((fl) => this.getLayersFromStringId(fl).map((e) => e.layerid).includes(l.layerid))) ||
                             (
-                                (this.options.layerFilteringMode.toLowerCase() == "blacklist" && !this.options.layerLevelBlacklist.find((fl) => this.getLayersFromStringId(fl).map((e) => e.layerid).includes(l.layerid))) ||
-                                (
-                                    this.options.layerFilteringMode.toLowerCase() == "whitelist"
-                                    && this.options.layerLevelWhitelist.find((fl) => this.getLayersFromStringId(fl).map((e) => e.layerid).includes(l.layerid))
-                                    && !(this.options.applyBlacklistToWhitelist && this.options.layerLevelBlacklist.find((fl) => this.getLayersFromStringId(fl).map((e) => e.layerid).includes(l.layerid)))
-                                )
-                            ) || cls[ 2 ]
-                        )
-                        // && (
-                        //     (cls[ 0 ] == "*" || l.layerid.toLowerCase().startsWith(cls[ 0 ]))
-                        //     || (cls[ 0 ].toLowerCase().startsWith('f:') && [ this.getTranslation(l.teams[ 0 ]), this.getTranslation(l.teams[ 1 ]) ].includes(cls[ 0 ].substring(2).toUpperCase()))
-                        // )
-                        // && (l.gamemode.toLowerCase().startsWith(cls[ 1 ]) || (!cls[ 1 ] && this.options.gamemodeWhitelist.includes(l.gamemode.toUpperCase())))
-                        // && (!cls[ 2 ] || l.version.toLowerCase().startsWith("v" + cls[ 2 ].replace(/v(0*)/i, '')))
-                        // // && !(this.options.factionsBlacklist.find((f) => [ this.getTranslation(l.teams[ 0 ]), this.getTranslation(l.teams[ 1 ]) ].includes(f)))
-                        && this.getLayersFromStringId(cl, l)
-                        && (cls[ 2 ] || !(
-                            this.options.layerLevelBlacklist.find((fl) => this.getLayersFromStringId(fl).map((e) => e.layerid).includes(l.layerid))
-                            || this.options.factionsBlacklist.find((f) => [ this.getTranslation(l.teams[ 0 ]), this.getTranslation(l.teams[ 1 ]) ].includes(f))
-                        ))
-                    ));
-                    iterationLayersCount.push(fLayers.length);
-                    // this.warn(steamid, `SanLayer: ${sanitizedLayers.filter(l => (
-                    //     (
-                    //         (
-                    //             (this.options.layerFilteringMode.toLowerCase() == "blacklist" && !this.options.layerLevelBlacklist.find((fl) => this.getLayersFromStringId(fl).map((e) => e.layerid).includes(l.layerid))) ||
-                    //             (
-                    //                 this.options.layerFilteringMode.toLowerCase() == "whitelist"
-                    //                 && this.options.layerLevelWhitelist.find((fl) => this.getLayersFromStringId(fl).find(fl => fl.layerid == l.layerid))
-                    //                 // && !(this.options.applyBlacklistToWhitelist && this.options.layerLevelBlacklist.find((fl) => this.getLayersFromStringId(fl).find(fl => fl.layerid == l.layerid)))
-                    //             )
-                    //         ) || cls[ 2 ]
-                    //     )
-                    // )).length}`)
-                    if (fLayers.length == 0) continue;
-                    // this.verbose(1, 'fLayers', fLayers.map(l => l.layerid));
-                    // this.verbose(1, 'rnd_layers', rnd_layers.map(l => l.layerid));
-                    let l, maxtries = 10;
-                    do l = randomElement(fLayers); while ((rnd_layers.filter(lf => lf.map.name == l.map.name).length > (this.options.allowedSameMapEntries - 1)) && --maxtries >= 0)
-                    if (l) {
-                        rnd_layers.push(l);
+                                this.options.layerFilteringMode.toLowerCase() == "whitelist"
+                                && this.options.layerLevelWhitelist.find((fl) => this.getLayersFromStringId(fl).map((e) => e.layerid).includes(l.layerid))
+                                && !(this.options.applyBlacklistToWhitelist && this.options.layerLevelBlacklist.find((fl) => this.getLayersFromStringId(fl).map((e) => e.layerid).includes(l.layerid)))
+                            )
+                        ) || cls[ 2 ]
+                    )
+                    // && (
+                    //     (cls[ 0 ] == "*" || l.layerid.toLowerCase().startsWith(cls[ 0 ]))
+                    //     || (cls[ 0 ].toLowerCase().startsWith('f:') && [ this.getTranslation(l.teams[ 0 ]), this.getTranslation(l.teams[ 1 ]) ].includes(cls[ 0 ].substring(2).toUpperCase()))
+                    // )
+                    // && (l.gamemode.toLowerCase().startsWith(cls[ 1 ]) || (!cls[ 1 ] && this.options.gamemodeWhitelist.includes(l.gamemode.toUpperCase())))
+                    // && (!cls[ 2 ] || l.version.toLowerCase().startsWith("v" + cls[ 2 ].replace(/v(0*)/i, '')))
+                    // // && !(this.options.factionsBlacklist.find((f) => [ this.getTranslation(l.teams[ 0 ]), this.getTranslation(l.teams[ 1 ]) ].includes(f)))
+                    && this.getLayersFromStringId(cl, l)
+                    && (cls[ 2 ] || !(
+                        this.options.layerLevelBlacklist.find((fl) => this.getLayersFromStringId(fl).map((e) => e.layerid).includes(l.layerid))
+                        || this.options.factionsBlacklist.find((f) => [ this.getTranslation(l.teams[ 0 ]), this.getTranslation(l.teams[ 1 ]) ].includes(f))
+                    ))
+                ));
+                iterationLayersCount.push(fLayers.length);
+                // this.warn(steamid, `SanLayer: ${sanitizedLayers.filter(l => (
+                //     (
+                //         (
+                //             (this.options.layerFilteringMode.toLowerCase() == "blacklist" && !this.options.layerLevelBlacklist.find((fl) => this.getLayersFromStringId(fl).map((e) => e.layerid).includes(l.layerid))) ||
+                //             (
+                //                 this.options.layerFilteringMode.toLowerCase() == "whitelist"
+                //                 && this.options.layerLevelWhitelist.find((fl) => this.getLayersFromStringId(fl).find(fl => fl.layerid == l.layerid))
+                //                 // && !(this.options.applyBlacklistToWhitelist && this.options.layerLevelBlacklist.find((fl) => this.getLayersFromStringId(fl).find(fl => fl.layerid == l.layerid)))
+                //             )
+                //         ) || cls[ 2 ]
+                //     )
+                // )).length}`)
+                if (fLayers.length == 0) continue;
+                // this.verbose(1, 'fLayers', fLayers.map(l => l.layerid));
+                // this.verbose(1, 'rnd_layers', rnd_layers.map(l => l.layerid));
+                let l, maxtries = 10;
+                do l = randomElement(fLayers); while ((rnd_layers.filter(lf => lf.map.name == l.map.name).length > (this.options.allowedSameMapEntries - 1)) && --maxtries >= 0)
+                if (l) {
+                    rnd_layers.push(l);
+                    if (!simulate) {
                         this.nominations[ i ] = l.layerid
                         this.tallies[ i ] = 0;
                         this.factionStrings[ i ] = this.getTranslation(l.teams[ 0 ]) + "-" + this.getTranslation(l.teams[ 1 ]);
                         i++;
                     }
                 }
-
-                if (rnd_layers.length == 0) {
-                    this.warn(steamid, `Could not start a vote due to randomized layer list being filtered to 0`)
-                    return;
-                }
-                // this.warn(steamid, `Iteration layers count: ${iterationLayersCount.join('; ')}`);
             }
-            else if (steamid) {
-                this.warn(steamid, "You cannot start a vote with more than " + maxOptions + " options");
+
+            if (rnd_layers.length == 0) {
+                this.warn(steamid, `Could not start a vote due to randomized layer list being filtered to 0`)
                 return;
             }
+            // this.warn(steamid, `Iteration layers count: ${iterationLayersCount.join('; ')}`);
+        }
+        else if (steamid) {
+            this.warn(steamid, "You cannot start a vote with more than " + maxOptions + " options");
+            return;
+        }
+
+        if (simulate && steamid) {
+            this.verbose(1, 'Simulation', rnd_layers)
+            this.warn(steamid, 'Simulation\n', rnd_layers.map(l => l.layerid).join('\n'));
+            return;
         }
 
         if (this.options.showRerollOption && (isRandomVote || this.options.showRerollOptionInCustomVotes)) {
@@ -1265,7 +1242,7 @@ export default class MapVote extends DiscordBasePlugin {
         this.verbose(1, "Restoring data:", bkData)
 
         // if (bkData.custom.layerHistory) this.server.layerHistory = Layers.layers.filter(l => bkData.custom.layerHistory.includes(l.layerid));
-        this.verbose(1, "Recently played maps: " + this.server.layerHistory.filter((l) => l && l.map && l.map.name).map((l) => l.layer.map.name).join(', '))
+        this.verbose(1, "Recently played maps: " + this.server.layerHistory.map((l) => l.layer?.map?.name).join(', '))
 
         for (let k in bkData.plugin) this[ k ] = bkData.plugin[ k ];
         if (this.votingEnabled) {
@@ -1282,7 +1259,7 @@ export default class MapVote extends DiscordBasePlugin {
                 // layerHistory: this.server.layerHistory.slice(0, this.options.numberRecentMapsToExlude * 2).filter(l => l && l.layerid).map(l => l.layerid),
             },
             server: {
-                layerHistory: this.server.layerHistory
+                layerHistory: this.server.layerHistory.slice(0, 10)
             },
             plugin: {
                 nominations: this.nominations,

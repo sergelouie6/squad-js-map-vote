@@ -661,6 +661,9 @@ export default class MapVote extends DiscordBasePlugin {
             case "simulate":
                 this.populateNominations(steamID, [], false, 10, true)
                 return;
+            case "getlayer":
+                this.warn(steamID, `INPUT: ${commandSplit[ 1 ]} \nOUTPUT: \n   ${this.getLayersFromStringId(commandSplit[ 1 ]).map(l => l.layerid).join('; ')}`)
+                return;
             case "help": //displays available commands
                 let msg = "";
                 msg += (`!vote\n > choices\n > results\n`);
@@ -809,8 +812,8 @@ export default class MapVote extends DiscordBasePlugin {
             for (let cl of cmdLayers) {
                 const cls = cl.toLowerCase().split('_');
                 const fLayers = sanitizedLayers.filter((l) => (
-                    ((cls[ 1 ] && cls[ 1 ] != '*') || rnd_layers.filter(l2 => l2.map.name == l.map.name).length < this.options.allowedSameMapEntries) &&
-                    (![ this.server.currentLayer?.map?.name, ...recentlyPlayedMaps ].includes(l.map.name) || cls[ 2 ]) &&
+                    ((cls[ 0 ] && cls[ 0 ] != '*') || rnd_layers.filter(l2 => l2.map.name == l.map.name).length < this.options.allowedSameMapEntries) &&
+                    (![ this.server.currentLayer?.map?.name, ...recentlyPlayedMaps ].includes(l.map.name) || cls[ 2 ] || (cls[ 0 ] && cls[ 0 ] != '*')) &&
                     (
                         (
                             (this.options.layerFilteringMode.toLowerCase() == "blacklist" && !this.options.layerLevelBlacklist.find((fl) => this.getLayersFromStringId(fl).map((e) => e.layerid).includes(l.layerid))) ||
@@ -1105,7 +1108,7 @@ export default class MapVote extends DiscordBasePlugin {
                     !cls[ 2 ] || parseInt(l.version.replace(/v(0*)/i, '')) == parseInt(cls[ 2 ].replace(/v(0*)/i, ''))
                 )
             ));
-            else ret = Layers.layers[ findOrFilter ]((l) => ((cls[ 0 ] == "*" || l.mod?.toLowerCase().startsWith(cls[ 0 ].toLowerCase())) && (cls[ 1 ] == "*" || l.map.name.toLowerCase().startsWith(cls[ 1 ])) && (l.gamemode.toLowerCase().startsWith(cls[ 2 ]) || (!cls[ 2 ] && [ 'RAAS', 'AAS', 'INVASION' ].includes(l.gamemode.toUpperCase()))) && (!cls[ 3 ] || parseInt(l.version.toLowerCase().replace(/v(0*)/i, '')) == parseInt(cls[ 3 ].replace(/v(0*)/i, ''))) && (!cls[ 4 ] || cls[ 4 ] == l.layerid.split('_')[ 4 ]?.toLowerCase())))
+            else ret = Layers.layers[ findOrFilter ]((l) => ((cls[ 0 ] == "*" || l.mod?.toLowerCase().startsWith(cls[ 0 ].toLowerCase())) && (cls[ 1 ] == "*" || l.map.name.toLowerCase().startsWith(cls[ 1 ])) && (l.gamemode.toLowerCase().startsWith(cls[ 2 ]) || (!cls[ 2 ] && this.options.gamemodeWhitelist.includes(l.gamemode.toUpperCase()))) && (!cls[ 3 ] || parseInt(l.version.toLowerCase().replace(/v(0*)/i, '')) == parseInt(cls[ 3 ].replace(/v(0*)/i, ''))) && (!cls[ 4 ] || cls[ 4 ] == l.layerid.split('_')[ 4 ]?.toLowerCase())))
         }
         // this.verbose(1,"layers from string",stringid,cls,ret)
         return ret;
@@ -1373,7 +1376,7 @@ export default class MapVote extends DiscordBasePlugin {
 
         function parseNumberOfAssets(string) {
             if (string.trim() == '') return 0;
-            console.log('Assets', string)
+            // console.log('Assets', string)
             return /^x?(\d+)/.exec(string)[ 1 ]
         }
     }
@@ -1449,5 +1452,6 @@ const translations = {
     // 'Irregular Militia Forces': "MIL",
     // 'Middle Eastern Alliance': "MEA",
     // 'Insurgent Forces': "INS",
+    'Russian Airborne Forces': "VDV",
     'Unknown': "Unk"
 }

@@ -1382,7 +1382,7 @@ export default class MapVote extends DiscordBasePlugin {
     }
 
     mapLayer(l) {
-        l = l.split(' ')[ 0 ].replace(/[^a-z_\d\s\(\)]/gi, '')
+        l = l.split(' ')[ 0 ].replace(/[^a-z_\d\s\(\)]/gi, '').replace(/Whitebox_Test/i,'Whitebox');
         // if(l.includes('_DEV'))
         // if(l.startsWith('GC')) this.verbose(1, 'Parsing layer', l)
         const gl = /^((?<mod>\w+)_)?(?<level>\w+)_(?<gamemode>\w+)_(?<version>V\d+)(.+)?/i.exec(l)?.groups

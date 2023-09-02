@@ -1078,6 +1078,7 @@ export default class MapVote extends DiscordBasePlugin {
             .replace(/\{map_name\}/i, layer.map.name)
             .replace(/\{gamemode\}/i, layer.gamemode)
             .replace(/\{map_version\}/i, layer.version)
+            .replace(/\{version\}/i, layer.version)
             .replace(/\{factions\}/i, factionString)
             .replace(/\{main_assets\}/i, vehiclesString)
     }
@@ -1381,8 +1382,8 @@ export default class MapVote extends DiscordBasePlugin {
         }
     }
 
-    mapLayer(l) {
-        l = l.split(' ')[ 0 ].replace(/[^a-z_\d\s\(\)]/gi, '').replace(/Whitebox_Test/i,'Whitebox');
+    mapLayer(layerid) {
+        const l = layerid.split(' ')[ 0 ].replace(/[^a-z_\d\s\(\)]/gi, '').replace(/Whitebox_Test/i, 'Whitebox');
         // if(l.includes('_DEV'))
         // if(l.startsWith('GC')) this.verbose(1, 'Parsing layer', l)
         const gl = /^((?<mod>\w+)_)?(?<level>\w+)_(?<gamemode>\w+)_(?<version>V\d+)(.+)?/i.exec(l)?.groups
@@ -1408,7 +1409,7 @@ export default class MapVote extends DiscordBasePlugin {
         return {
             name: l.replace(/_/g, ' '),
             classname: l,
-            layerid: l,
+            layerid: layerid,
             map: {
                 name: gl.level
             },

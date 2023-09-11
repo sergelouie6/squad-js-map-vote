@@ -169,6 +169,13 @@ Hides the number of votes a layer received in broadcast message.
 ```json
 false
 ```
+#### hideEntryIndex
+###### Description
+Hides the index number of an entry in the mapvote broadcast.
+###### Default
+```json
+false
+```
 #### showRerollOption
 ###### Description
 vote option to restart the vote with random entries.
@@ -355,6 +362,7 @@ Map/Layers Google Sheet URL provided by OWI.
     "applyBlacklistToWhitelist": true,
     "factionsBlacklist": [ "CAF", "INS" ],
     "hideVotesCount": false,
+    "hideEntryIndex": false,
     "showRerollOption": true,
     "showRerollOptionInCustomVotes": false,
     "voteBroadcastMessage": "✯ MAPVOTE ✯\nVote for the next map by writing in chat the corresponding number!",

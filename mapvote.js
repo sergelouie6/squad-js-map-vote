@@ -131,6 +131,11 @@ export default class MapVote extends DiscordBasePlugin {
                 description: 'hides the number of votes a layer received in broadcast message',
                 default: false
             },
+            hideEntryIndex: {
+                required: false,
+                description: 'hides the index number of an entry in the mapvote broadcast',
+                default: false
+            },
             showRerollOption: {
                 required: false,
                 description: 'vote option to restart the vote with random entries',
@@ -417,6 +422,10 @@ export default class MapVote extends DiscordBasePlugin {
 
     debugWebpage() {
         let socketIo = this.server.plugins.find(p => p instanceof SocketIOAPI);
+        if (!socketIo) {
+            this.verbose(1, 'SocketIOAPI Plugin has not been found. HTTP Server could not be enabled.')
+            return;
+        }
         try {
             socketIo.httpServer.on('request', async (req, res) => {
                 this.verbose(2, 'Request', req.url)
@@ -1333,8 +1342,9 @@ export default class MapVote extends DiscordBasePlugin {
         sheetCsv.shift();
         // this.verbose(1, 'Sheet', Layers.layers.length, sheetCsv.length, sheetCsv.find(l => l.includes("Manicouagan_RAAS_v1")))
 
-        const rconLayers = (await this.server.rcon.execute('ListLayers'))?.split('\n') || [];
+        let rconLayers = (await this.server.rcon.execute('ListLayers'))?.split('\n') || [];
         rconLayers.shift();
+        rconLayers = rconLayers.map((l) => l.split(' ')[ 0 ])
 
         if (rconLayers.length > 0) Layers.layers = Layers.layers.filter((l) => l != null && rconLayers.includes(l.layerid))
         // this.verbose(1, 'RCON Layers', rconLayers.length, this.mapLayer(rconLayers[ 1 ]))
@@ -1342,7 +1352,14 @@ export default class MapVote extends DiscordBasePlugin {
             for (const layer of rconLayers) {
                 const existingLayer = Layers.layers.find((e,) => e?.layerid == layer);
 
-                let newLayer = existingLayer || this.mapLayer(layer);
+                const genLayer = this.mapLayer(layer);
+
+                if (existingLayer && genLayer) {
+                    existingLayer.mod = genLayer.mod;
+                    if (existingLayer.version == "TBD") existingLayer.version = genLayer.version
+                }
+
+                let newLayer = existingLayer || genLayer
                 // if(layer.startsWith('GC')) this.verbose(1, 'layer', newLayer)
                 if (!newLayer) continue;
 
@@ -1429,7 +1446,9 @@ export default class MapVote extends DiscordBasePlugin {
     }
 
     formatChoice(choiceIndex, mapString, currentVotes, hideVoteCount) {
-        return `${choiceIndex}➤ ${mapString} ` + (!hideVoteCount ? `(${currentVotes})` : "");
+        let entryIndex = `${choiceIndex}➤ `;
+        if (this.options.hideEntryIndex) entryIndex = "";
+        return `${entryIndex}${mapString} ` + (!hideVoteCount ? `(${currentVotes})` : "");
         // return `${choiceIndex + 1}❱ ${mapString} (${currentVotes} votes)`
     }
 }

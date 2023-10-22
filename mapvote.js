@@ -169,7 +169,7 @@ export default class MapVote extends DiscordBasePlugin {
             logToDiscord: {
                 required: false,
                 description: 'Enables/disables vote logging to Discord',
-                default: false
+                default: true
             },
             channelID: {
                 required: false,
@@ -1053,9 +1053,9 @@ export default class MapVote extends DiscordBasePlugin {
                 choice = Number(choice);
                 let vLayer = Layers.layers.find(e => e.layerid == this.nominations[ choice ]);
 
-                const formattedChoide = this.formatChoice(choice, this.formatFancyLayer(vLayer), this.tallies[ choice ], (this.options.hideVotesCount || this.firstBroadcast))
-                nominationStrings.push(formattedChoide);
-                allNominationStrings.push(formattedChoide);
+                const formattedChoice = this.formatChoice(choice, this.formatFancyLayer(vLayer), this.tallies[ choice ], (this.options.hideVotesCount || this.firstBroadcast))
+                nominationStrings.push(formattedChoice);
+                allNominationStrings.push(formattedChoice);
 
                 if (nominationStrings.length == 3) {
                     await this.broadcast(nominationStrings.join("\n"));

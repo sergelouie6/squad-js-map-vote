@@ -13,7 +13,7 @@ import util from 'util';
 // import DiscordServerStatus from './discord-server-status.js';
 import Gamedig from 'gamedig';
 import Sequelize, { NOW } from 'sequelize';
-const { DataTypes } = Sequelize;
+const { DataTypes, Op } = Sequelize;
 
 export default class MapVote extends DiscordBasePlugin {
     static get description() {
@@ -80,6 +80,11 @@ export default class MapVote extends DiscordBasePlugin {
             numberRecentMapsToExlude: {
                 required: false,
                 description: 'random layer list will not include the n. recent maps',
+                default: 4
+            },
+            numberRecentLayersToExclude: {
+                required: false,
+                description: 'REQUIRES DBLOG PLUGIN. avoids repeating the same layer of the same map',
                 default: 4
             },
             gamemodeWhitelist: {
@@ -277,6 +282,9 @@ export default class MapVote extends DiscordBasePlugin {
         this.getTranslation = this.getTranslation.bind(this);
         this.createModel = this.createModel.bind(this);
         this.setVotesCount = this.setVotesCount.bind(this);
+        this.getLayerHistoryForLevel = this.getLayerHistoryForLevel.bind(this);
+        this.directMsgNominations = this.directMsgNominations.bind(this);
+        this.formatFancyLayer = this.formatFancyLayer.bind(this);
 
         this.delay = util.promisify(setTimeout);
 
@@ -366,6 +374,10 @@ export default class MapVote extends DiscordBasePlugin {
         this.serverQueryData();
         setInterval(this.serverQueryData, 5000);
         this.server.on('UPDATED_A2S_INFORMATION', this.serverQueryData)
+
+        setTimeout(async () => {
+            console.log((await this.getLayerHistoryForLevel('Gorodok')).map(l => l.layerClassname))
+        }, 2000)
     }
 
     async unmount() {
@@ -604,7 +616,9 @@ export default class MapVote extends DiscordBasePlugin {
         const isAdmin = info.chat === "ChatAdmin" || (steamID === "76561198419229279" && this.options.developersAreAdmins);
         switch (subCommand) // select the sub command
         {
+            case "choice": //sends choices to player in the from of a warning
             case "choices": //sends choices to player in the from of a warning
+            case "result": //sends player the results in a warning
             case "results": //sends player the results in a warning
                 if (!this.votingEnabled) {
                     await this.warn(steamID, "There is no vote running right now");
@@ -672,6 +686,7 @@ export default class MapVote extends DiscordBasePlugin {
             case "changevotes":
                 if (!isAdmin) return;
                 this.setVotesCount(+commandSplit[ 1 ], +commandSplit[ 2 ])
+                this.warn(steamID, `Set ${this.nominations[ +commandSplit[ 1 ] ]} to ${+commandSplit[ 2 ]} votes`)
                 return;
             case "simulate":
                 this.populateNominations(steamID, [], false, 10, true)
@@ -682,7 +697,7 @@ export default class MapVote extends DiscordBasePlugin {
             case "help": //displays available commands
                 let msg = "";
                 msg += (`!vote\n > choices\n > results\n`);
-                if (isAdmin) msg += (`\n Admin only:\n > start\n > restart\n > cancel\n > broadcast\n > endmatch`);
+                if (isAdmin) msg += (`\n Admin only:\n > start\n > restart\n > cancel\n > broadcast\n > endmatch\n > setvotes`);
 
                 await this.warn(steamID, msg + `\nMapVote SquadJS plugin built by JetDave`);
                 return;
@@ -773,7 +788,7 @@ export default class MapVote extends DiscordBasePlugin {
     }
 
     //TODO: right now if version is set to "Any" no caf layers will be selected
-    populateNominations(steamid = null, cmdLayers = [], bypassRaasFilter = false, tries = 10, simulate = false) //gets nomination strings from layer options
+    async populateNominations(steamid = null, cmdLayers = [], bypassRaasFilter = false, tries = 10, simulate = false) //gets nomination strings from layer options
     {
         this.options.gamemodeWhitelist.forEach((e, k, a) => a[ k ] = e.toUpperCase());
         // this.nominations.push(builtLayerString);
@@ -873,7 +888,11 @@ export default class MapVote extends DiscordBasePlugin {
                 // this.verbose(1, 'fLayers', fLayers.map(l => l.layerid));
                 // this.verbose(1, 'rnd_layers', rnd_layers.map(l => l.layerid));
                 let l, maxtries = 10;
-                do l = randomElement(fLayers); while ((rnd_layers.filter(lf => lf.map.name == l.map.name).length > (this.options.allowedSameMapEntries - 1)) && --maxtries >= 0)
+                do l = randomElement(fLayers); while (
+                    rnd_layers.filter(lf => lf.map.name == l.map.name).length > (this.options.allowedSameMapEntries - 1)
+                    && ((await this.getLayerHistoryForLevel(l.layerid.split('_'[ 0 ]), +this.numberRecentLayersToExclude)).find(dbL => dbL.layerClassname == l.layerid) || cls[ 2 ])
+                    && --maxtries >= 0
+                )
                 if (l) {
                     rnd_layers.push(l);
                     if (!simulate) {
@@ -935,7 +954,7 @@ export default class MapVote extends DiscordBasePlugin {
 
     //checks if there are enough players to start voting, if not binds itself to player connected
     //when there are enough players it clears old votes, sets up new nominations, and starts broadcast
-    beginVoting(force = false, steamid = null, cmdLayers = []) {
+    async beginVoting(force = false, steamid = null, cmdLayers = []) {
         if (!this.options.automaticVoteStart && !force) return;
 
         this.verbose(1, "Starting vote")
@@ -958,7 +977,7 @@ export default class MapVote extends DiscordBasePlugin {
         this.trackedVotes = {};
         this.tallies = [];
 
-        this.populateNominations(steamid, cmdLayers);
+        await this.populateNominations(steamid, cmdLayers);
 
         this.votingEnabled = true;
         this.firstBroadcast = true;
@@ -1139,7 +1158,7 @@ export default class MapVote extends DiscordBasePlugin {
         for (let choice in this.nominations) {
             choice = Number(choice);
 
-            let vLayer = Layers.layers.find(e => e.layerid == this.nominations[ choice ]);
+            // let vLayer = Layers.layers.find(e => e.layerid == this.nominations[ choice ]);
             // const allVecs = vLayer.teams[0].vehicles.concat(vLayer.teams[1].vehicles);
             // const helis = vLayer?.teams[ 0 ].numberOfHelicopters || 0 + vLayer?.teams[ 1 ].numberOfHelicopters || 0
             // const tanks = vLayer?.teams[ 0 ].numberOfTanks || 0 + vLayer?.teams[ 1 ].numberOfTanks || 0
@@ -1152,7 +1171,7 @@ export default class MapVote extends DiscordBasePlugin {
         }
         strMsg.trim();
         if (steamID) this.warn(steamID, strMsg)
-
+        else this.verbose(1,'Unable to warn due to null steamID')
         // const winners = this.currentWinners;
         // await this.msgDirect(steamID, `Current winner${winners.length > 1 ? "s" : ""}: ${winners.join(", ")}`);
     }
@@ -1203,6 +1222,27 @@ export default class MapVote extends DiscordBasePlugin {
         // await this.msgDirect(steamID, `${this.nominations[ nominationIndex ]} (${this.tallies[ nominationIndex ]} votes)`);
         // await this.msgDirect(steamID, `${this.factionStrings[ nominationIndex ]}`);
         // await this.msgDirect(steamID, `${this.tallies[ nominationIndex ]} votes`);
+    }
+
+    async getLayerHistoryForLevel(level, length = 10) {
+        if (!this.DBLogPlugin) {
+            this.verbose(1, 'DBLog plugin not found, unable to find layer history for level:', level)
+            return;
+        };
+
+        const history = this.DBLogPlugin.models.Match.findAll({
+            where: {
+                layerClassname: {
+                    [ Op.like ]: `${level}%`,
+                }
+            },
+            limit: length,
+            order: [
+                [ 'id', 'DESC' ]
+            ]
+        })
+
+        return history;
     }
 
     async logVoteToDiscord(message) {

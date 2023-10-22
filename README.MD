@@ -16,6 +16,8 @@ The `MapVote` plugin for squad js based on the original version https://github.c
 - `!vote restart` - Restarts voting with 6 random maps and modes
 - `!vote broadcast` - Broadcasts current voting results - happens every 7m automatically
 - `!vote endmatch` - Ends the current match
+- `!vote setvotes <layer_number> <new_vote_count>` - Forces a new amount of votes for a specific layer
+- `!vote changevotes` - Alias of `!vote setvotes`
 
 ##### Vote by modes
 - `!vote start *_raas` - Starts a vote with 6 layers, all RAAS

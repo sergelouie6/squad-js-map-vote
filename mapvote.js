@@ -276,6 +276,7 @@ export default class MapVote extends DiscordBasePlugin {
         this.serverQueryData = this.serverQueryData.bind(this);
         this.getTranslation = this.getTranslation.bind(this);
         this.createModel = this.createModel.bind(this);
+        this.setVotesCount = this.setVotesCount.bind(this);
 
         this.delay = util.promisify(setTimeout);
 
@@ -667,6 +668,11 @@ export default class MapVote extends DiscordBasePlugin {
                 if (!isAdmin) return;
                 this.server.rcon.execute(`AdminEndMatch`)
                 return;
+            case "setvotes":
+            case "changevotes":
+                if (!isAdmin) return;
+                this.setVotesCount(+commandSplit[ 1 ], +commandSplit[ 2 ])
+                return;
             case "simulate":
                 this.populateNominations(steamID, [], false, 10, true)
                 return;
@@ -695,6 +701,10 @@ export default class MapVote extends DiscordBasePlugin {
                 return;
         }
 
+    }
+
+    setVotesCount(index, newCount) {
+        this.tallies[ index ] = parseInt(newCount)
     }
 
     updateNextMap() //sets next map to current mapvote winner, if there is a tie will pick at random

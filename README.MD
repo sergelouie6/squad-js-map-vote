@@ -111,6 +111,13 @@ The random layer list will not include the X recent maps
 ```json
 4
 ```
+#### numberRecentLayersToExclude
+###### Description
+**REQUIRES DBLOG PLUGIN**. Avoids repeating the same layer of the same map
+###### Default
+```json
+4
+```
 #### gamemodeWhitelist
 ###### Description
 The random layer list will be generated with only selected gamemodes.
@@ -357,6 +364,7 @@ Map/Layers Google Sheet URL provided by OWI.
     "voteWaitTimeFromMatchStart": 10,
     "voteBroadcastInterval": 7,
     "numberRecentMapsToExlude": 4,
+    "numberRecentLayersToExclude": 4,
     "automaticSeedingMode": true,
     "gamemodeWhitelist": [ "AAS", "RAAS", "Invasion" ],
     "layerLevelBlacklist": [ "BlackCoast_Seed" ],

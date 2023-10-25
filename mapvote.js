@@ -1344,8 +1344,10 @@ export default class MapVote extends DiscordBasePlugin {
         }
 
         const gSheetUrlSanitized = this.options.OWIMapLayerGSheetUrl
-            .replace(/\/edit\?usp\=sharing$/, '')
+            .match(/https:\/\/docs\.google\.com\/spreadsheets\/d\/[^\/]+/)[0]
             + '/gviz/tq?tqx=out:csv&sheet=Map%20Layers'
+            // .replace(/\/edit\?usp\=sharing$/, '')
+            // .replace(/\/edit\#gid=\d+$/, '')
 
         const sheetCsv = (await axios.get(gSheetUrlSanitized)).data?.replace(/\"/g, '')?.split('\n') || []//.map((l) => l.split(','))
         // this.verbose(1, 'Sheet', sheetCsv)

@@ -233,6 +233,12 @@ export default class MapVote extends DiscordBasePlugin {
     constructor(server, options, connectors) {
         super(server, options, connectors);
 
+        this.prepareToMountSaved = this.prepareToMount;
+        this.prepareToMount = (async () => {
+            await this.prepareToMountSaved();
+            await this.prepareToMountCustom();
+        }).bind(this)
+
         this.options.timeFrames.forEach((e, key, arr) => { arr[ key ].id = key + 1 });
 
         if (this.options.allowedSameMapEntries < 1) this.options.allowedSameMapEntries = 1
@@ -298,10 +304,10 @@ export default class MapVote extends DiscordBasePlugin {
         // this.verbose(1,'DBLogOptions', this.DBLogPlugin.options)
     }
 
-    async prepareToMount() {
+    async prepareToMountCustom() {
         this.DBLogPlugin = this.server.plugins.find(p => p instanceof DBLog);
         if (!this.DBLogPlugin) return;
-
+        
         await this.createModel('PlayerVotes', {
             id: {
                 type: DataTypes.INTEGER,
@@ -1344,10 +1350,10 @@ export default class MapVote extends DiscordBasePlugin {
         }
 
         const gSheetUrlSanitized = this.options.OWIMapLayerGSheetUrl
-            .match(/https:\/\/docs\.google\.com\/spreadsheets\/d\/[^\/]+/)[0]
+            .match(/https:\/\/docs\.google\.com\/spreadsheets\/d\/[^\/]+/)[ 0 ]
             + '/gviz/tq?tqx=out:csv&sheet=Map%20Layers'
-            // .replace(/\/edit\?usp\=sharing$/, '')
-            // .replace(/\/edit\#gid=\d+$/, '')
+        // .replace(/\/edit\?usp\=sharing$/, '')
+        // .replace(/\/edit\#gid=\d+$/, '')
 
         const sheetCsv = (await axios.get(gSheetUrlSanitized)).data?.replace(/\"/g, '')?.split('\n') || []//.map((l) => l.split(','))
         // this.verbose(1, 'Sheet', sheetCsv)

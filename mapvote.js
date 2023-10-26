@@ -1202,7 +1202,7 @@ export default class MapVote extends DiscordBasePlugin {
 
         const votedLayer = Layers.layers.find(l => l.layerid == this.nominations[ nominationIndex ]);
         const matchId = this.DBLogPlugin?.match?.id || 0;
-        this.verbose(1, 'DBLogPlugin', this.DBLogPlugin)
+        // this.verbose(1, 'DBLogPlugin', this.DBLogPlugin)
 
         await this.models.PlayerVotes.destroy({
             where: {

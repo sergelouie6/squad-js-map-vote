@@ -267,6 +267,7 @@ export default class MapVote extends DiscordBasePlugin {
         this.endVotingTimeout = null;
         this.timeout_ps = []
         this.a2sPlayerCount = 100;
+        this.lastNominationBroadcast = +(new Date(0));
 
         this.onNewGame = this.onNewGame.bind(this);
         this.onPlayerDisconnected = this.onPlayerDisconnected.bind(this);
@@ -1079,7 +1080,9 @@ export default class MapVote extends DiscordBasePlugin {
     //NOTE: max squad broadcast message length appears to be 485 characters
     //Note: broadcast strings with multi lines are very strange
     async broadcastNominations() {
+        if (Date.now() - this.lastNominationBroadcast < 30_000) return;
         if (this.nominations.length > 0 && this.votingEnabled) {
+            this.lastNominationBroadcast = Date.now();
             await this.broadcast(this.options.voteBroadcastMessage);
             let allNominationStrings = []
             let nominationStrings = [];

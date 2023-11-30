@@ -315,7 +315,7 @@ export default class MapVote extends DiscordBasePlugin {
     async prepareToMountCustom() {
         this.DBLogPlugin = this.server.plugins.find(p => p instanceof DBLog);
         if (!this.DBLogPlugin) return;
-        
+
         await this.createModel('PlayerVotes', {
             id: {
                 type: DataTypes.INTEGER,
@@ -853,7 +853,7 @@ export default class MapVote extends DiscordBasePlugin {
                 const cls = cl.toLowerCase().split('_');
                 const fLayers = sanitizedLayers.filter((l) => (
                     ((cls[ 0 ] && cls[ 0 ] != '*') || rnd_layers.filter(l2 => l2.map.name == l.map.name).length < this.options.allowedSameMapEntries) &&
-                    (![ this.server.currentLayer?.map?.name, ...recentlyPlayedMaps ].includes(l.map.name) || cls[ 2 ] || (cls[ 0 ] && cls[ 0 ] != '*')) &&
+                    (![ this.server.currentLayer?.map?.name, ...recentlyPlayedMaps ].includes(l.map.name) || (cls[ 0 ] && cls[ 0 ] != '*')) &&
                     (
                         (
                             (this.options.layerFilteringMode.toLowerCase() == "blacklist" && !this.options.layerLevelBlacklist.find((fl) => this.getLayersFromStringId(fl).map((e) => e.layerid).includes(l.layerid))) ||
@@ -1177,7 +1177,7 @@ export default class MapVote extends DiscordBasePlugin {
         }
         strMsg.trim();
         if (steamID) this.warn(steamID, strMsg)
-        else this.verbose(1,'Unable to warn due to null steamID')
+        else this.verbose(1, 'Unable to warn due to null steamID')
         // const winners = this.currentWinners;
         // await this.msgDirect(steamID, `Current winner${winners.length > 1 ? "s" : ""}: ${winners.join(", ")}`);
     }
@@ -1402,18 +1402,27 @@ export default class MapVote extends DiscordBasePlugin {
         rconLayers.shift();
         rconLayers = rconLayers.map((l) => l.split(' ')[ 0 ])
 
-        if (rconLayers.length > 0) Layers.layers = Layers.layers.filter((l) => l != null && rconLayers.includes(l.layerid))
         // this.verbose(1, 'RCON Layers', rconLayers.length, this.mapLayer(rconLayers[ 1 ]))
         if (rconLayers.length > 0) {
             for (const layer of rconLayers) {
-                const existingLayer = Layers.layers.find((e,) => e?.layerid == layer);
+                const versionRegex = /_v0(\d)$/i;
+                const versionMatching = layer.match(versionRegex);
+                const versionNumber = !!versionMatching ? +versionMatching[ 1 ] : null;
+
+                const existingLayer = Layers.layers.find((e,) => e?.layerid == layer || (!!versionNumber && e?.layerid == layer.replace(versionRegex, `_v${versionNumber}`)));
+                // if (layer == "Manicouagan_RAAS_v01") this.verbose(1, 'Layer', existingLayer)
 
                 const genLayer = this.mapLayer(layer);
 
+                if (!existingLayer) Layers.layers = Layers.layers.filter((l) => l != null && l.layerid != layer)
+
                 if (existingLayer && genLayer) {
+                    if (layer != existingLayer.layerid) existingLayer.layerid = layer
+
                     existingLayer.mod = genLayer.mod;
                     if (existingLayer.version == "TBD") existingLayer.version = genLayer.version
                 }
+
 
                 let newLayer = existingLayer || genLayer
                 // if(layer.startsWith('GC')) this.verbose(1, 'layer', newLayer)

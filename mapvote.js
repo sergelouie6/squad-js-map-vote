@@ -226,7 +226,7 @@ export default class MapVote extends DiscordBasePlugin {
             OWIMapLayerGSheetUrl: {
                 required: false,
                 description: "Map/Layers Google Sheet URL provided by OWI",
-                default: "https://docs.google.com/spreadsheets/d/139zvTRo6YnocNM0e4Q_JHHy4gOMG6qiIDWSP2YlMlKM/edit?usp=sharing"
+                default: "https://docs.google.com/spreadsheets/d/1wWB3eNBPLQ7VS9y7jtzyfL_I7LxgZmGVpr0O81b0P84/edit#gid=84736544"
             },
             timeFrames: {
                 required: false,

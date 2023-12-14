@@ -369,6 +369,7 @@ export default class MapVote extends DiscordBasePlugin {
         this.server.on('NEW_GAME', this.onNewGame);
         this.server.on('CHAT_MESSAGE', this.onChatMessage);
         this.server.on('PLAYER_DISCONNECTED', this.onPlayerDisconnected);
+        this.server.on('UPDATED_SERVER_INFORMATION', (info) => this.setCurrentLayer(info.currentLayer));
         // this.server.on('PLAYER_CONNECTED', () => this.beginVoting());
         this.server.on('ROUND_ENDED', this.endVotingGently)
         // setTimeout(() => {

@@ -564,7 +564,7 @@ export default class MapVote extends DiscordBasePlugin {
         if (this.options.automaticSeedingMode) {
             this.verbose(1, "Checking seeding mode");
             const maxSeedingModePlayerCount = Math.max(this.options.nextLayerSeedingModePlayerCount, this.options.instantSeedingModePlayerCount);
-            if (this.a2sPlayerCount >= 1 && this.a2sPlayerCount < maxSeedingModePlayerCount) {
+            if (this.server.playerCount >= 1 && this.a2sPlayerCount < maxSeedingModePlayerCount) {
                 // if (+(new Date()) - +this.server.layerHistory[ 0 ].time > 30 * 1000) {
                 const sanitizedLayers = Layers.layers.filter((l) => l.layerid && l.map &&
                     (this.options.filterByMod.length == 0 || this.options.filterByMod.find(m => m.toLowerCase() == l?.mod?.toLowerCase() || ''))
@@ -596,7 +596,7 @@ export default class MapVote extends DiscordBasePlugin {
                     }
                 } else this.verbose(1, "Bad data (nextLayer). Seeding mode for next layer skipped to prevent errors.");
                 // } else this.verbose(1, `Waiting 30 seconds from mapchange before entering seeding mode`);
-            } else this.verbose(1, `Player count doesn't allow seeding mode (${this.a2sPlayerCount}/${maxSeedingModePlayerCount})`);
+            } else this.verbose(1, `Player count doesn't allow seeding mode (${this.server.playerCount}/${maxSeedingModePlayerCount})`);
         } else this.verbose(1, "Seeding mode disabled in config");
     }
 

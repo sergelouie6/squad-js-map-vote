@@ -267,7 +267,7 @@ export default class MapVote extends DiscordBasePlugin {
         this.lastMapUpdate = new Date();
         this.endVotingTimeout = null;
         this.timeout_ps = []
-        this.a2sPlayerCount = 100;
+        this.server.playerCount = 100;
         this.lastNominationBroadcast = +(new Date(0));
 
         this.onNewGame = this.onNewGame.bind(this);
@@ -404,10 +404,10 @@ export default class MapVote extends DiscordBasePlugin {
 
     async serverQueryData(info) {
         if (info) {
-            this.a2sPlayerCount = info.raw.numplayers;
+            this.server.playerCount = info.playerCount;
             this.setSeedingMode();
         }
-        // this.verbose(1, 'A2S Player Count:', this.a2sPlayerCount)
+        // this.verbose(1, 'A2S Player Count:', this.server.playerCount)
         if (
             this.server.layerHistory[ 0 ].layer &&
             this.server.currentLayer
@@ -564,7 +564,7 @@ export default class MapVote extends DiscordBasePlugin {
         if (this.options.automaticSeedingMode) {
             this.verbose(1, "Checking seeding mode");
             const maxSeedingModePlayerCount = Math.max(this.options.nextLayerSeedingModePlayerCount, this.options.instantSeedingModePlayerCount);
-            if (this.server.playerCount >= 1 && this.a2sPlayerCount < maxSeedingModePlayerCount) {
+            if (this.server.playerCount >= 1 && this.server.playerCount < maxSeedingModePlayerCount) {
                 // if (+(new Date()) - +this.server.layerHistory[ 0 ].time > 30 * 1000) {
                 const sanitizedLayers = Layers.layers.filter((l) => l.layerid && l.map &&
                     (this.options.filterByMod.length == 0 || this.options.filterByMod.find(m => m.toLowerCase() == l?.mod?.toLowerCase() || ''))
@@ -574,7 +574,7 @@ export default class MapVote extends DiscordBasePlugin {
                 const rndMap = randomElement(seedingMaps);
                 if (this.server.currentLayer) {
                     if (!this.server.currentLayer.gamemode.match(new RegExp(this.options.seedingGameMode, 'i'))) {
-                        if (this.a2sPlayerCount <= this.options.instantSeedingModePlayerCount) {
+                        if (this.server.playerCount <= this.options.instantSeedingModePlayerCount) {
                             const newCurrentMap = rndMap.layerid;
                             this.verbose(1, 'Going into seeding mode.');
                             this.endVoting();
@@ -589,7 +589,7 @@ export default class MapVote extends DiscordBasePlugin {
                     do rndMap2 = randomElement(nextMaps);
                     while (rndMap2.layerid == rndMap.layerid)
 
-                    if (this.a2sPlayerCount < this.options.nextLayerSeedingModePlayerCount && this.server.nextLayer.gamemode.toLowerCase() != "seed") {
+                    if (this.server.playerCount < this.options.nextLayerSeedingModePlayerCount && this.server.nextLayer.gamemode.toLowerCase() != "seed") {
                         const newNextMap = rndMap2.layerid;
                         this.endVoting();
                         this.server.rcon.execute(`AdminSetNextLayer ${newNextMap} `);

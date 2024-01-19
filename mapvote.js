@@ -267,7 +267,7 @@ export default class MapVote extends DiscordBasePlugin {
         this.lastMapUpdate = new Date();
         this.endVotingTimeout = null;
         this.timeout_ps = []
-        this.server.playerCount = 100;
+        
         this.lastNominationBroadcast = +(new Date(0));
 
         this.onNewGame = this.onNewGame.bind(this);

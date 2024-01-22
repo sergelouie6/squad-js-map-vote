@@ -267,7 +267,8 @@ export default class MapVote extends DiscordBasePlugin {
         this.lastMapUpdate = new Date();
         this.endVotingTimeout = null;
         this.timeout_ps = []
-        
+        this.rconLayers = ""
+
         this.lastNominationBroadcast = +(new Date(0));
 
         this.onNewGame = this.onNewGame.bind(this);
@@ -476,6 +477,10 @@ export default class MapVote extends DiscordBasePlugin {
                 } else if (req.method == 'GET' && req.url == '/mapvote/debug/nextLayer') {
                     res.setHeader('Content-Type', 'application/json');
                     res.write(JSON.stringify(this.server.nextLayer, null, 2))
+                    res.end();
+                } else if (req.method == 'GET' && req.url == '/mapvote/debug/rconLayers') {
+                    res.setHeader('Content-Type', 'application/json');
+                    res.write(this.rconLayers)
                     res.end();
                 }
             })
@@ -1417,7 +1422,8 @@ export default class MapVote extends DiscordBasePlugin {
         sheetCsv.shift();
         // this.verbose(1, 'Sheet', Layers.layers.length, sheetCsv.length, sheetCsv.find(l => l.includes("Manicouagan_RAAS_v1")))
 
-        let rconLayers = (await this.server.rcon.execute('ListLayers'))?.split('\n') || [];
+        this.rconLayers = await this.server.rcon.execute('ListLayers')
+        let rconLayers = this.rconLayers.split('\n') || [];
         rconLayers.shift();
         rconLayers = rconLayers.map((l) => l.split(' ')[ 0 ])
 
